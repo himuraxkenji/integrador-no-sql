@@ -56,8 +56,10 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-nexus-dev-password}
       CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-60}
       RECENT_VIEWS_LIMIT: ${RECENT_VIEWS_LIMIT:-10}
+    # Desarrollo: el bind mount pisa el código de la imagen y --reload toma los cambios al guardar.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app"]
     volumes:
-      - .:/app # el código se recarga solo (uvicorn --reload)
+      - .:/app
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }

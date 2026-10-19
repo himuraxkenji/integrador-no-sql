@@ -1,6 +1,25 @@
+# La imagen solo necesita app/, scripts/, datasets/, pyproject.toml y uv.lock.
 .git
+.gitignore
 .venv
 .env
+.env.*
+env.example
 __pycache__
+*.pyc
 .pytest_cache
+.ruff_cache
+.mypy_cache
 .atl
+.idea
+.vscode
+*.swp
+.DS_Store
+tests
+docs
+README.md
+ENUNCIADO.md
+Makefile
+compose.yaml
+Dockerfile
+.dockerignore
