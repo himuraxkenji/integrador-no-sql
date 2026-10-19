@@ -1,0 +1,278 @@
+[
+  {
+    "id": "nb-001",
+    "name": "Notebook Aurora 14",
+    "category": "notebooks",
+    "price": 1200,
+    "stock": 10,
+    "active": true,
+    "attributes": {
+      "ram_gb": 16,
+      "cpu": "i5",
+      "screen_inches": 14,
+      "storage_gb": 512
+    }
+  },
+  {
+    "id": "nb-002",
+    "name": "Notebook Titan 15",
+    "category": "notebooks",
+    "price": 1800,
+    "stock": 5,
+    "active": true,
+    "attributes": {
+      "ram_gb": 32,
+      "cpu": "i7",
+      "screen_inches": 15.6,
+      "storage_gb": 1024
+    }
+  },
+  {
+    "id": "nb-003",
+    "name": "Notebook Lite 13",
+    "category": "notebooks",
+    "price": 650,
+    "stock": 0,
+    "active": true,
+    "attributes": {
+      "ram_gb": 8,
+      "cpu": "i3",
+      "screen_inches": 13.3,
+      "storage_gb": 256
+    }
+  },
+  {
+    "id": "nb-004",
+    "name": "Notebook Vega 16",
+    "category": "notebooks",
+    "price": 2200,
+    "stock": 3,
+    "active": true,
+    "attributes": {
+      "ram_gb": 32,
+      "cpu": "ryzen9",
+      "screen_inches": 16,
+      "storage_gb": 2048
+    }
+  },
+  {
+    "id": "ms-001",
+    "name": "Mouse Inalámbrico Pico",
+    "category": "mice",
+    "price": 25,
+    "stock": 100,
+    "active": true,
+    "attributes": {
+      "wireless": true,
+      "dpi": 1600,
+      "buttons": 3
+    }
+  },
+  {
+    "id": "ms-002",
+    "name": "Mouse Gamer Hydra",
+    "category": "mice",
+    "price": 60,
+    "stock": 40,
+    "active": true,
+    "attributes": {
+      "wireless": false,
+      "dpi": 16000,
+      "buttons": 8
+    }
+  },
+  {
+    "id": "ms-003",
+    "name": "Mouse Ergonómico Vertical",
+    "category": "mice",
+    "price": 45,
+    "stock": 0,
+    "active": true,
+    "attributes": {
+      "wireless": true,
+      "dpi": 2400,
+      "buttons": 6
+    }
+  },
+  {
+    "id": "ms-004",
+    "name": "Mouse Trackball Orbit",
+    "category": "mice",
+    "price": 70,
+    "stock": 15,
+    "active": true,
+    "attributes": {
+      "wireless": true,
+      "dpi": 1200,
+      "buttons": 5
+    }
+  },
+  {
+    "id": "mn-001",
+    "name": "Monitor 24 FHD",
+    "category": "monitors",
+    "price": 180,
+    "stock": 20,
+    "active": true,
+    "attributes": {
+      "size_inches": 24,
+      "resolution": "1920x1080",
+      "panel": "IPS",
+      "refresh_hz": 75
+    }
+  },
+  {
+    "id": "mn-002",
+    "name": "Monitor 27 QHD",
+    "category": "monitors",
+    "price": 320,
+    "stock": 8,
+    "active": true,
+    "attributes": {
+      "size_inches": 27,
+      "resolution": "2560x1440",
+      "panel": "IPS",
+      "refresh_hz": 144
+    }
+  },
+  {
+    "id": "mn-003",
+    "name": "Monitor 32 4K",
+    "category": "monitors",
+    "price": 550,
+    "stock": 4,
+    "active": true,
+    "attributes": {
+      "size_inches": 32,
+      "resolution": "3840x2160",
+      "panel": "VA",
+      "refresh_hz": 60
+    }
+  },
+  {
+    "id": "mn-004",
+    "name": "Monitor Curvo 34 UW",
+    "category": "monitors",
+    "price": 700,
+    "stock": 0,
+    "active": false,
+    "attributes": {
+      "size_inches": 34,
+      "resolution": "3440x1440",
+      "panel": "VA",
+      "refresh_hz": 100
+    }
+  },
+  {
+    "id": "mn-005",
+    "name": "Monitor Portátil 15",
+    "category": "monitors",
+    "price": 210,
+    "stock": 9,
+    "active": true,
+    "attributes": {
+      "size_inches": 15.6,
+      "resolution": "1920x1080",
+      "panel": "IPS",
+      "refresh_hz": 60
+    }
+  },
+  {
+    "id": "kb-001",
+    "name": "Teclado Mecánico Forge",
+    "category": "keyboards",
+    "price": 90,
+    "stock": 30,
+    "active": true,
+    "attributes": {
+      "layout": "US",
+      "switch": "red",
+      "backlight": true,
+      "wireless": false
+    }
+  },
+  {
+    "id": "kb-002",
+    "name": "Teclado Inalámbrico Slim",
+    "category": "keyboards",
+    "price": 40,
+    "stock": 50,
+    "active": true,
+    "attributes": {
+      "layout": "ES",
+      "switch": "membrane",
+      "backlight": false,
+      "wireless": true
+    }
+  },
+  {
+    "id": "kb-003",
+    "name": "Teclado Compacto 60%",
+    "category": "keyboards",
+    "price": 110,
+    "stock": 12,
+    "active": true,
+    "attributes": {
+      "layout": "US",
+      "switch": "brown",
+      "backlight": true,
+      "wireless": true
+    }
+  },
+  {
+    "id": "ph-001",
+    "name": "Smartphone Nova 128",
+    "category": "phones",
+    "price": 400,
+    "stock": 25,
+    "active": true,
+    "attributes": {
+      "storage_gb": 128,
+      "ram_gb": 6,
+      "screen_inches": 6.4,
+      "battery_mah": 4500
+    }
+  },
+  {
+    "id": "ph-002",
+    "name": "Smartphone Nova Pro 256",
+    "category": "phones",
+    "price": 750,
+    "stock": 10,
+    "active": true,
+    "attributes": {
+      "storage_gb": 256,
+      "ram_gb": 8,
+      "screen_inches": 6.7,
+      "battery_mah": 5000
+    }
+  },
+  {
+    "id": "ph-003",
+    "name": "Smartphone Eco",
+    "category": "phones",
+    "price": 180,
+    "stock": 0,
+    "active": true,
+    "attributes": {
+      "storage_gb": 64,
+      "ram_gb": 4,
+      "screen_inches": 6.1,
+      "battery_mah": 4000
+    }
+  },
+  {
+    "id": "ph-004",
+    "name": "Smartphone Flip",
+    "category": "phones",
+    "price": 950,
+    "stock": 2,
+    "active": true,
+    "attributes": {
+      "storage_gb": 256,
+      "ram_gb": 8,
+      "screen_inches": 6.9,
+      "battery_mah": 4300
+    }
+  }
+]

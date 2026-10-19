@@ -1,0 +1,71 @@
+[
+  {
+    "id": "c-001",
+    "name": "Ana Pérez",
+    "email": "ana@example.com",
+    "interests": [
+      "notebooks",
+      "monitors"
+    ]
+  },
+  {
+    "id": "c-002",
+    "name": "Luis Gómez",
+    "email": "luis@example.com",
+    "interests": [
+      "notebooks",
+      "keyboards"
+    ]
+  },
+  {
+    "id": "c-003",
+    "name": "Marta Díaz",
+    "email": "marta@example.com",
+    "interests": [
+      "phones"
+    ]
+  },
+  {
+    "id": "c-004",
+    "name": "Carlos Ruiz",
+    "email": "carlos@example.com",
+    "interests": [
+      "mice",
+      "keyboards"
+    ]
+  },
+  {
+    "id": "c-005",
+    "name": "Sofía Lima",
+    "email": "sofia@example.com",
+    "interests": [
+      "monitors",
+      "notebooks"
+    ]
+  },
+  {
+    "id": "c-006",
+    "name": "Diego Torres",
+    "email": "diego@example.com",
+    "interests": [
+      "phones",
+      "mice"
+    ]
+  },
+  {
+    "id": "c-007",
+    "name": "Valentina Ríos",
+    "email": "valentina@example.com",
+    "interests": [
+      "keyboards"
+    ]
+  },
+  {
+    "id": "c-008",
+    "name": "Tomás Acosta",
+    "email": "tomas@example.com",
+    "interests": [
+      "monitors"
+    ]
+  }
+]
