@@ -64,6 +64,54 @@ Qué costo/riesgo aceptamos: ...
 - [ ] ¿Cómo combinan "también compraron" con intereses por categoría? ¿Cómo ponderan?
 - [ ] ¿Qué pasa con un producto que se da de baja (soft delete) pero sigue en las relaciones derivadas?
 
+## Evidencia de que el motor hace el trabajo
+
+Plantilla a completar. Regla: consultas nativas con el driver oficial, sin ORM, y filtros/ordenamientos/conteos/recorridos resueltos en el motor (ver [guia-consultas.md](guia-consultas.md)). Esta evidencia se revisa en la defensa oral.
+
+### Búsqueda de productos (MongoDB)
+
+- Índice(s) creado(s) (`create_index`): `<COMPLETAR>`
+- Consulta ejecutada (filtro, proyección, sort, limit): `<COMPLETAR>`
+- Resumen de `explain("executionStats")`:
+
+| Dato | Valor |
+|------|-------|
+| `winningPlan` (stage) | `<COMPLETAR: IXSCAN o COLLSCAN>` |
+| `indexName` | `<COMPLETAR>` |
+| `totalKeysExamined` | `<COMPLETAR>` |
+| `totalDocsExamined` | `<COMPLETAR>` |
+| `nReturned` | `<COMPLETAR>` |
+
+- Conclusión: `<COMPLETAR: ¿IXSCAN? ¿docs examinados cercanos a los devueltos?>`
+
+### Recomendaciones
+
+Si están en Neo4j, pegar el resumen de `PROFILE` (o `EXPLAIN`) de la consulta de recomendación. Si están en otro motor, la evidencia equivalente (por ejemplo `explain()` del pipeline o los comandos usados y su complejidad).
+
+- Consulta (Cypher / pipeline / comandos): `<COMPLETAR>`
+- Resumen del plan:
+
+| Dato | Valor |
+|------|-------|
+| Operadores de acceso (`NodeIndexSeek` / `NodeByLabelScan` / `AllNodesScan`) | `<COMPLETAR>` |
+| `db hits` totales | `<COMPLETAR>` |
+| Filas devueltas | `<COMPLETAR>` |
+
+- Conclusión: `<COMPLETAR>`
+
+### Operaciones que corren en el motor, por almacén derivado
+
+| Almacén derivado | Motor | Operaciones resueltas por el motor | Qué hace Python |
+|------------------|-------|------------------------------------|-----------------|
+| Caché de productos | `<COMPLETAR>` | `<COMPLETAR: p. ej. expiración, borrado de clave>` | `<COMPLETAR: serializar/deserializar>` |
+| Actividad (contadores, historial, ranking) | `<COMPLETAR>` | `<COMPLETAR: incremento atómico, recorte, orden por puntaje>` | `<COMPLETAR>` |
+| Relaciones de compra | `<COMPLETAR>` | `<COMPLETAR: upsert idempotente, restricciones>` | `<COMPLETAR>` |
+| Recomendaciones | `<COMPLETAR>` | `<COMPLETAR: recorrido, exclusión, conteo y orden>` | `<COMPLETAR>` |
+
+- [ ] Ninguna consulta trae colecciones completas para filtrar u ordenar en Python
+- [ ] Ningún recorrido de relaciones se hace con bucles de consultas (N+1)
+- [ ] Todo Cypher usa parámetros (sin concatenar datos del usuario)
+
 ## 6. Pruebas y límites
 
 - [ ] ¿Qué escenarios de falla probaron además del 07 (motor de caché caído, Mongo caído)? ¿Qué hace la API?

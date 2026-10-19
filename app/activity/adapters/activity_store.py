@@ -1,3 +1,5 @@
+"""Usen el lenguaje nativo del motor mediante el driver oficial (ver docs/guia-consultas.md). No se admiten ORM/ODM/OGM."""
+
 from app.activity.domain import ProductViews
 from app.activity.ports import ActivityStore
 from app.infrastructure.connections import Connections

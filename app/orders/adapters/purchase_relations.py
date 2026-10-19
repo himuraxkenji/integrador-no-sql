@@ -1,3 +1,5 @@
+"""Usen el lenguaje nativo del motor mediante el driver oficial (ver docs/guia-consultas.md). No se admiten ORM/ODM/OGM."""
+
 from app.catalog.domain import Product
 from app.customers.domain import Customer
 from app.infrastructure.connections import Connections

@@ -1,0 +1,132 @@
+"""Verifica que el proyecto use solo los drivers oficiales (sin ORM/ODM/OGM).
+
+Regla (ENUNCIADO.md, secciones 6 y 7.4): las consultas se escriben en el lenguaje
+nativo de cada motor (MongoDB, Redis, Neo4j) mediante pymongo, redis-py y neo4j.
+Guía con ejemplos: docs/guia-consultas.md.
+
+Límite de este test: NO intenta detectar "filtrar/ordenar/agregar en Python"
+(eso no se puede decidir estáticamente de forma confiable). Ese punto se controla
+en la defensa oral y con la evidencia de `explain()` / `PROFILE` pedida en
+docs/decisions.md.
+
+Se ejecuta con: uv run pytest tests/test_no_orm.py
+"""
+
+import ast
+import re
+import tomllib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+# Módulos de primer nivel prohibidos: ORM / ODM / OGM / constructores de consultas.
+# Importar cualquiera de ellos implica que la consulta ya no está escrita en el
+# lenguaje nativo del motor.
+FORBIDDEN_MODULES = frozenset(
+    {
+        "mongoengine",
+        "beanie",
+        "odmantic",
+        "motor_odm",
+        "redis_om",
+        "neomodel",
+        "py2neo",
+        "sqlalchemy",
+        "sqlmodel",
+        "peewee",
+        "pony",
+        "tortoise",
+        "umongo",
+    }
+)
+
+# Nombres de distribución (PyPI) prohibidos en pyproject.toml, ya normalizados.
+FORBIDDEN_DISTRIBUTIONS = frozenset(
+    {
+        "mongoengine",
+        "beanie",
+        "odmantic",
+        "motor-odm",
+        "redis-om",
+        "neomodel",
+        "py2neo",
+        "sqlalchemy",
+        "sqlmodel",
+        "peewee",
+        "pony",
+        "tortoise-orm",
+        "tortoise",
+        "umongo",
+    }
+)
+
+SOURCE_DIRS = ("app", "scripts")
+
+
+def _normalize(name: str) -> str:
+    """Normaliza un nombre de distribución (PEP 503): minúsculas y `-` para `_`/`.`."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _requirement_name(requirement: str) -> str:
+    """Extrae el nombre de una línea PEP 508 (`redis-om[extra]>=1; python_version...`)."""
+    match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", requirement)
+    return _normalize(match.group(1)) if match else ""
+
+
+def _python_files() -> list[Path]:
+    files: list[Path] = []
+    for directory in SOURCE_DIRS:
+        files.extend(sorted((ROOT / directory).rglob("*.py")))
+    return files
+
+
+def _imports_in(path: Path) -> list[tuple[int, str]]:
+    """Devuelve (línea, módulo de primer nivel) por cada import del archivo."""
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    found: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found.extend((node.lineno, alias.name.split(".")[0]) for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            found.append((node.lineno, node.module.split(".")[0]))
+    return found
+
+
+def test_no_orm_imports_in_source():
+    assert _python_files(), "No se encontraron archivos .py en app/ ni scripts/."
+    violations = [
+        f"{path.relative_to(ROOT)}:{lineno} importa '{module}'"
+        for path in _python_files()
+        for lineno, module in _imports_in(path)
+        if module.lower() in FORBIDDEN_MODULES
+    ]
+    assert not violations, (
+        "No se admiten ORM/ODM/OGM ni constructores de consultas. Las consultas deben "
+        "escribirse en el lenguaje nativo de cada motor con el driver oficial "
+        "(pymongo, redis-py, neo4j). Ver docs/guia-consultas.md y ENUNCIADO.md (7.4).\n"
+        "Imports prohibidos encontrados:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_no_orm_dependencies_in_pyproject():
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    declared: list[str] = list(data.get("project", {}).get("dependencies", []))
+    for group in data.get("project", {}).get("optional-dependencies", {}).values():
+        declared.extend(group)
+    for group in data.get("dependency-groups", {}).values():
+        # Los grupos pueden incluir tablas ({include-group = ...}); solo contamos strings.
+        declared.extend(item for item in group if isinstance(item, str))
+
+    violations = [
+        requirement
+        for requirement in declared
+        if _requirement_name(requirement) in FORBIDDEN_DISTRIBUTIONS
+    ]
+    assert not violations, (
+        "pyproject.toml declara dependencias prohibidas (ORM/ODM/OGM o query builders). "
+        "Solo se admiten los drivers oficiales: pymongo, redis, neo4j. "
+        "Ver docs/guia-consultas.md y ENUNCIADO.md (7.4).\n"
+        "Dependencias prohibidas: " + ", ".join(violations)
+    )

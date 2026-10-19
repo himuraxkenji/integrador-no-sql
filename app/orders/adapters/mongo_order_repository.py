@@ -1,3 +1,5 @@
+"""Usen el lenguaje nativo del motor mediante el driver oficial (ver docs/guia-consultas.md). No se admiten ORM/ODM/OGM."""
+
 from pymongo.database import Database
 
 from app.infrastructure.mongo_utils import from_document, to_document

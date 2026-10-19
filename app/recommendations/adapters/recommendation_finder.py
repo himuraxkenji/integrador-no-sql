@@ -1,3 +1,5 @@
+"""Usen el lenguaje nativo del motor mediante el driver oficial (ver docs/guia-consultas.md). No se admiten ORM/ODM/OGM."""
+
 from app.infrastructure.connections import Connections
 from app.recommendations.domain import Candidate
 from app.recommendations.ports import RecommendationFinder
