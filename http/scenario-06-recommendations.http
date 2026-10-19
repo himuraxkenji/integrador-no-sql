@@ -1,0 +1,52 @@
+# Escenario 06 - Recomendaciones: candidatos + detalles de Mongo, sin lo ya comprado
+# Espeja tests/acceptance/test_06_recommendations.py
+# Dataset: Ana (c-001) compro nb-001 y ms-001; Luis (c-002) y Carlos (c-004) compraron ms-001 y kb-001;
+# Sofia (c-005) compro nb-001, mn-002 y mn-004 (inactivo).
+# MUTA datos: el paso "buyKb002" crea una orden de c-007. Para estado limpio: make seed.
+@baseUrl = http://localhost:8000
+@customerId = c-001
+@interestCustomerId = c-007
+@targetProduct = kb-002
+
+# @name recommendationsAna
+# Recomendaciones para Ana.
+# OBSERVAR: 200; el primero es kb-001 "Teclado Mecanico Forge" (price 90), tambien mn-002; cada item trae
+# product (name, price, stock... de Mongo), score > 0 y reason (also_bought / category_interest).
+# NO deben aparecer nb-001 ni ms-001 (ya comprados) ni mn-004 (inactivo).
+GET {{baseUrl}}/customers/{{customerId}}/recommendations?limit=20
+
+###
+
+# @name recommendationsAnaDefault
+# Con el limit por defecto (5).
+# OBSERVAR: maximo 5 elementos, mismas reglas.
+GET {{baseUrl}}/customers/{{customerId}}/recommendations
+
+###
+
+# @name recommendationsValentinaBefore
+# Valentina (c-007) se interesa por teclados.
+# OBSERVAR: kb-002 aparece como candidato (todavia no lo compro).
+GET {{baseUrl}}/customers/{{interestCustomerId}}/recommendations?limit=20
+
+###
+
+# @name buyKb002
+# Valentina compra kb-002 (MUTA datos).
+# OBSERVAR: 201 y sync_status "synced".
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "{{interestCustomerId}}",
+  "items": [
+    { "product_id": "{{targetProduct}}", "quantity": 1 }
+  ]
+}
+
+###
+
+# @name recommendationsValentinaAfter
+# Recomendaciones de Valentina despues de comprar.
+# OBSERVAR: kb-002 ya NO aparece.
+GET {{baseUrl}}/customers/{{interestCustomerId}}/recommendations?limit=20

@@ -1,0 +1,48 @@
+# Escenario 02 - Lecturas repetidas: responde la cache (X-Cache: HIT)
+# Espeja tests/acceptance/test_02_repeated_read_hit.py
+@baseUrl = http://localhost:8000
+# Si repetis el escenario, cambia el id (demo-s02-b, ...).
+@productId = demo-s02
+
+# @name createProduct
+# Crea un producto nuevo (sin cache todavia).
+# OBSERVAR: 201.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "id": "{{productId}}",
+  "name": "Producto escenario 02",
+  "category": "notebooks",
+  "price": 100,
+  "stock": 10,
+  "attributes": { "ram_gb": 8 }
+}
+
+###
+
+# @name getMiss
+# Primera lectura.
+# OBSERVAR: 200 y X-Cache: MISS.
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name getHit1
+# Segunda lectura.
+# OBSERVAR: 200, X-Cache: HIT y el mismo cuerpo que la primera.
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name getHit2
+# Tercera lectura.
+# OBSERVAR: 200, X-Cache: HIT.
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name getHit3
+# Cuarta lectura.
+# OBSERVAR: 200, X-Cache: HIT (siempre mismo cuerpo; si el TTL vence vuelve un MISS).
+GET {{baseUrl}}/products/{{productId}}

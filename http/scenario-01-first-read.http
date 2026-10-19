@@ -1,0 +1,49 @@
+# Escenario 01 - Primera lectura: responde MongoDB (X-Cache: MISS)
+# Espeja tests/acceptance/test_01_first_read_miss.py
+@baseUrl = http://localhost:8000
+# Producto dedicado a la demo (la cache solo esta vacia para un id que nadie leyo todavia).
+# Si repetis el escenario, cambia el id (demo-s01-b, ...) o reinicia la cache.
+@productId = demo-s01
+
+# @name createProduct
+# Crea un producto nuevo: no hay entrada de cache para este id.
+# OBSERVAR: 201 con el producto.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "id": "{{productId}}",
+  "name": "Producto escenario 01",
+  "category": "notebooks",
+  "price": 100,
+  "stock": 10,
+  "attributes": { "ram_gb": 8 }
+}
+
+###
+
+# @name firstGet
+# PRIMERA lectura del producto.
+# OBSERVAR: 200, header "X-Cache: MISS" y el mismo name que se creo. Respondio MongoDB y dejo la entrada en cache.
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name secondGetProof
+# Prueba de que la primera lectura creo la entrada en cache.
+# OBSERVAR: 200 y "X-Cache: HIT".
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name unknownProduct
+# Producto inexistente.
+# OBSERVAR: 404.
+GET {{baseUrl}}/products/no-existe
+
+###
+
+# @name firstGetSeeded
+# Alternativa con el dataset (README): solo da MISS si nadie leyo nb-002 desde el ultimo reinicio de la cache.
+# OBSERVAR: 200 y X-Cache: MISS (en un estado limpio).
+GET {{baseUrl}}/products/nb-002

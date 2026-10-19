@@ -1,0 +1,84 @@
+# Escenario 04 - Vistas: contadores, historial reciente y ranking
+# Espeja tests/acceptance/test_04_views_activity.py
+# Muta contadores/historial de actividad (no Mongo). Los contadores acumulan entre corridas:
+# compara contra el valor que leas ANTES (o reinicia el almacen de actividad / make seed).
+@baseUrl = http://localhost:8000
+@customerId = c-008
+@productA = nb-001
+@productB = ms-002
+
+# @name countBefore
+# Contador de vistas de A antes de empezar.
+# OBSERVAR: 200 y {"product_id":"nb-001","views":N}. Anota N.
+GET {{baseUrl}}/products/{{productA}}/views
+
+###
+
+# @name viewA1
+# Registra una vista de A por el cliente c-008.
+# OBSERVAR: 202 y {"status":"registered"}.
+POST {{baseUrl}}/products/{{productA}}/views
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}"
+}
+
+###
+
+# @name viewB
+# Registra una vista de B.
+# OBSERVAR: 202.
+POST {{baseUrl}}/products/{{productB}}/views
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}"
+}
+
+###
+
+# @name viewA2
+# Vuelve a ver A: queda primero en el historial sin repetirse.
+# OBSERVAR: 202.
+POST {{baseUrl}}/products/{{productA}}/views
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}"
+}
+
+###
+
+# @name countAfter
+# Contador de A despues de 2 vistas.
+# OBSERVAR: views = N + 2.
+GET {{baseUrl}}/products/{{productA}}/views
+
+###
+
+# @name recent
+# Historial reciente del cliente.
+# OBSERVAR: product_ids empieza con ["nb-001","ms-002", ...]: mas reciente primero, sin duplicados, acotado (RECENT_VIEWS_LIMIT, 10 por defecto).
+GET {{baseUrl}}/customers/{{customerId}}/recent
+
+###
+
+# @name recentLimit1
+# Historial con limit.
+# OBSERVAR: solo 1 id: ["nb-001"].
+GET {{baseUrl}}/customers/{{customerId}}/recent?limit=1
+
+###
+
+# @name top
+# Ranking de productos mas vistos.
+# OBSERVAR: lista [{product_id, views}] ordenada por views descendente; nb-001 y ms-002 presentes.
+GET {{baseUrl}}/activity/top?limit=10
+
+###
+
+# @name top100
+# Ranking amplio (el test usa limit=100).
+# OBSERVAR: orden descendente por views; un producto con mas vistas aparece antes que uno con menos.
+GET {{baseUrl}}/activity/top?limit=100

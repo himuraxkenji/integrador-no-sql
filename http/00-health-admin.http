@@ -1,0 +1,54 @@
+# NEXUS - Salud y administracion (health, faults, sync-status, reconcile)
+@baseUrl = http://localhost:8000
+
+# @name health
+# Verifica conectividad con los tres motores.
+# OBSERVAR: 200 y {"status":"ok", ...} con cada motor en "ok" (o "fake" si ADAPTERS=fake). 503 = "degraded".
+GET {{baseUrl}}/health
+
+###
+
+# @name getFaults
+# Lee las fallas inyectadas actualmente.
+# OBSERVAR: 200 y {"relations_down": false} en estado normal.
+GET {{baseUrl}}/admin/faults
+
+###
+
+# @name faultsRelationsDown
+# Enciende la falla: toda escritura de relaciones de compra falla (escenario 07).
+# OBSERVAR: 200 y {"relations_down": true}. Acuerdense de apagarla despues.
+POST {{baseUrl}}/admin/faults
+Content-Type: application/json
+
+{
+  "relations_down": true
+}
+
+###
+
+# @name faultsRelationsUp
+# Apaga la falla (estado normal).
+# OBSERVAR: 200 y {"relations_down": false}.
+POST {{baseUrl}}/admin/faults
+Content-Type: application/json
+
+{
+  "relations_down": false
+}
+
+###
+
+# @name syncStatus
+# Deteccion de estado parcial: ordenes por estado y lista de las no sincronizadas.
+# OBSERVAR: 200, "counts" (ej. {"synced": N, "failed": M}) y "unsynced" con las ordenes pending/failed.
+GET {{baseUrl}}/admin/sync-status
+
+###
+
+# @name reconcile
+# Recuperacion: reintenta las relaciones de compra de las ordenes pending/failed.
+# OBSERVAR: 200 con checked, synced, still_failed y synced_order_ids.
+# Con la falla encendida: still_failed > 0. Apagada: las ordenes pasan a synced.
+# Es idempotente: una segunda llamada devuelve checked = 0.
+POST {{baseUrl}}/admin/reconcile

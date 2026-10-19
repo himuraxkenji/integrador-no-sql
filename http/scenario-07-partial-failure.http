@@ -1,0 +1,103 @@
+# Escenario 07 - Falla parcial: orden failed -> deteccion -> recuperacion (synced)
+# Espeja tests/acceptance/test_07_partial_failure.py
+# Ejecutar EN ORDEN, de arriba hacia abajo. MUTA datos (crea una orden de c-008). Estado limpio: make seed.
+# Si algo falla a mitad de camino, ejecuta "faultOff" para no dejar la falla encendida.
+@baseUrl = http://localhost:8000
+@customerId = c-008
+@productId = ms-001
+# Despues del paso "orderWithFault" copia el "id" de la orden aca:
+@orderId = PEGAR-ID-DE-LA-ORDEN
+
+# @name faultsBefore
+# Estado inicial de las fallas.
+# OBSERVAR: {"relations_down": false}.
+GET {{baseUrl}}/admin/faults
+
+###
+
+# @name faultOn
+# 1) Apaga las relaciones de compra (falla inyectada).
+# OBSERVAR: 200 y {"relations_down": true}.
+POST {{baseUrl}}/admin/faults
+Content-Type: application/json
+
+{
+  "relations_down": true
+}
+
+###
+
+# @name orderWithFault
+# 2) Compra con las relaciones caidas.
+# OBSERVAR: 201 (la compra SE REGISTRO en Mongo) con "sync_status": "failed" y sync_error con el motivo.
+# COPIAR el "id" en @orderId (arriba).
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}",
+  "items": [
+    { "product_id": "{{productId}}", "quantity": 1 }
+  ]
+}
+
+###
+
+# @name getOrderFailed
+# La orden existe y esta marcada failed (requiere @orderId).
+# OBSERVAR: 200 y sync_status "failed".
+GET {{baseUrl}}/orders/{{orderId}}
+
+###
+
+# @name syncStatusDetect
+# 3) Deteccion del estado parcial.
+# OBSERVAR: counts.failed >= 1 y la orden aparece en "unsynced".
+GET {{baseUrl}}/admin/sync-status
+
+###
+
+# @name reconcileStillDown
+# (Opcional) Reconciliar con la falla todavia encendida: no se pierde nada.
+# OBSERVAR: still_failed >= 1, la orden sigue en unsynced.
+POST {{baseUrl}}/admin/reconcile
+
+###
+
+# @name faultOff
+# 4) Restablece las relaciones de compra.
+# OBSERVAR: 200 y {"relations_down": false}.
+POST {{baseUrl}}/admin/faults
+Content-Type: application/json
+
+{
+  "relations_down": false
+}
+
+###
+
+# @name reconcile
+# 5) Recuperacion.
+# OBSERVAR: 200; synced >= 1 y synced_order_ids contiene la orden; still_failed 0.
+POST {{baseUrl}}/admin/reconcile
+
+###
+
+# @name getOrderSynced
+# 6) Verificacion: la orden ahora esta synced (requiere @orderId).
+# OBSERVAR: sync_status "synced".
+GET {{baseUrl}}/orders/{{orderId}}
+
+###
+
+# @name syncStatusAfter
+# Ya no hay pendientes.
+# OBSERVAR: la orden ya no esta en "unsynced"; counts.failed 0.
+GET {{baseUrl}}/admin/sync-status
+
+###
+
+# @name reconcileTwice
+# Reconciliar de nuevo es seguro (idempotente).
+# OBSERVAR: checked 0.
+POST {{baseUrl}}/admin/reconcile

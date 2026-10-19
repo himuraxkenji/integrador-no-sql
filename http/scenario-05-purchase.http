@@ -1,0 +1,129 @@
+# Escenario 05 - Compra: orden en MongoDB + relaciones de compra sincronizadas
+# Espeja tests/acceptance/test_05_purchase.py
+# MUTA datos: cada POST /orders crea una orden (c-008 compra ms-001 / nb-002). Para estado limpio: make seed.
+# Nota: la compra NO descuenta stock (fuera de alcance de la catedra).
+@baseUrl = http://localhost:8000
+@customerId = c-008
+@productId = ms-001
+# Despues de crear la orden, copia su "id" aca y volve a ejecutar getOrder:
+@orderId = PEGAR-ID-DE-LA-ORDEN
+
+# @name placeOrder
+# Compra 2 unidades de ms-001 (Mouse Pico, precio 25).
+# OBSERVAR: 201, "sync_status": "synced", "total": 50, items[0].quantity 2 y unit_price 25.
+# COPIAR el "id" de la respuesta en @orderId (arriba).
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}",
+  "items": [
+    { "product_id": "{{productId}}", "quantity": 2 }
+  ]
+}
+
+###
+
+# @name placeOrderMultiItem
+# Compra de dos productos a la vez (notebook + mouse, como en el enunciado).
+# OBSERVAR: 201, sync_status synced, total = 1800 + 25 = 1825.
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}",
+  "items": [
+    { "product_id": "nb-002", "quantity": 1 },
+    { "product_id": "ms-001", "quantity": 1 }
+  ]
+}
+
+###
+
+# @name getOrder
+# Recupera la orden por id (requiere @orderId copiado).
+# OBSERVAR: 200 y sync_status "synced".
+GET {{baseUrl}}/orders/{{orderId}}
+
+###
+
+# @name listCustomerOrders
+# Ordenes del cliente.
+# OBSERVAR: 200 y la lista incluye el id de la orden creada.
+GET {{baseUrl}}/customers/{{customerId}}/orders
+
+###
+
+# @name priceSnapshotChangePrice
+# Cambia el precio de ms-001 (MUTA el dataset: vuelve a 25 con otro PUT o con make seed).
+# OBSERVAR: 200 y price 30.
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{
+  "price": 30
+}
+
+###
+
+# @name priceSnapshotCheck
+# La orden vieja conserva el precio al momento de la compra.
+# OBSERVAR: items[0].unit_price sigue en 25 (no 30).
+GET {{baseUrl}}/orders/{{orderId}}
+
+###
+
+# @name priceSnapshotRestore
+# Restaura el precio original.
+# OBSERVAR: 200 y price 25.
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{
+  "price": 25
+}
+
+###
+
+# @name insufficientStock
+# Stock insuficiente (nb-004 tiene stock 3).
+# OBSERVAR: 409.
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}",
+  "items": [
+    { "product_id": "nb-004", "quantity": 50 }
+  ]
+}
+
+###
+
+# @name unknownProduct
+# Producto inexistente.
+# OBSERVAR: 404.
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "{{customerId}}",
+  "items": [
+    { "product_id": "no-existe", "quantity": 1 }
+  ]
+}
+
+###
+
+# @name unknownCustomer
+# Cliente inexistente.
+# OBSERVAR: 404.
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customer_id": "fantasma",
+  "items": [
+    { "product_id": "{{productId}}", "quantity": 1 }
+  ]
+}

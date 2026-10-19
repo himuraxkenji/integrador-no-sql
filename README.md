@@ -26,6 +26,8 @@ uv run pytest tests/unit                              # arrancan en rojo hasta q
 
 Mientras algo no esté implementado, la API responde **501** con el mensaje `TODO(alumnos): ...` que dice qué falta.
 
+Colección de llamadas HTTP para probar la API y los escenarios: [http/README.md](http/README.md).
+
 ## Responsabilidad de cada motor
 
 | Responsabilidad | Motor | Qué guarda |

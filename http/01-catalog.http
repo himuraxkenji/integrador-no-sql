@@ -1,0 +1,171 @@
+# NEXUS - Catalogo (CRUD de productos, busquedas) y lectura de clientes
+@baseUrl = http://localhost:8000
+# Id del producto de demo creado en este archivo (si ya existe, cambialo; ej. demo-cat-002)
+@newProductId = demo-cat-001
+# Productos y clientes reales del dataset
+@productId = nb-001
+@customerId = c-001
+
+# @name createNotebook
+# Crea una notebook con atributos propios de la categoria (ram_gb, cpu, ...).
+# OBSERVAR: 201 con el producto, "active": true y los attributes enviados.
+# Si el id ya existe, esperen un error: cambien @newProductId.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "id": "{{newProductId}}",
+  "name": "Notebook Demo 14",
+  "category": "notebooks",
+  "price": 999.9,
+  "stock": 7,
+  "attributes": { "ram_gb": 16, "cpu": "i5", "screen_inches": 14, "storage_gb": 512 }
+}
+
+###
+
+# @name createMonitor
+# Crea un producto de otra categoria SIN id (el servicio genera uno) y con otros atributos.
+# OBSERVAR: 201 y un "id" generado; attributes distintos (size_inches, panel).
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "name": "Monitor Demo 27",
+  "category": "monitors",
+  "price": 300,
+  "stock": 3,
+  "attributes": { "size_inches": 27, "panel": "IPS", "refresh_hz": 144 }
+}
+
+###
+
+# @name getProduct
+# Lee un producto del dataset.
+# OBSERVAR: 200 y header X-Cache (MISS la primera vez, HIT despues).
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name getNewProduct
+# Lee el producto creado arriba.
+# OBSERVAR: 200 y X-Cache: MISS la primera vez.
+GET {{baseUrl}}/products/{{newProductId}}
+
+###
+
+# @name updateProduct
+# Actualizacion parcial (PUT): solo cambia lo enviado; attributes, si viene, reemplaza el dict completo.
+# OBSERVAR: 200; price 1049.9 y stock 5; name y category intactos.
+PUT {{baseUrl}}/products/{{newProductId}}
+Content-Type: application/json
+
+{
+  "price": 1049.9,
+  "stock": 5
+}
+
+###
+
+# @name deleteProduct
+# Borrado logico (soft delete).
+# OBSERVAR: 204 sin cuerpo.
+DELETE {{baseUrl}}/products/{{newProductId}}
+
+###
+
+# @name getDeletedProduct
+# Lectura tras el borrado.
+# OBSERVAR: 404 (no se sirve ni desde cache ni desde Mongo).
+GET {{baseUrl}}/products/{{newProductId}}
+
+###
+
+# @name getUnknownProduct
+# Producto inexistente.
+# OBSERVAR: 404.
+GET {{baseUrl}}/products/no-existe
+
+###
+
+# @name searchByCategory
+# Busqueda por categoria.
+# OBSERVAR: 200 y lista con solo notebooks (nb-001..nb-004 en el dataset).
+GET {{baseUrl}}/products?category=notebooks
+
+###
+
+# @name searchAvailable
+# Solo productos con stock > 0 (available=true).
+# OBSERVAR: no aparece nb-003 (stock 0). Probar available=false devuelve los de stock 0.
+GET {{baseUrl}}/products?category=notebooks&available=true
+
+###
+
+# @name searchNotAvailable
+# Productos sin stock (available=false).
+# OBSERVAR: aparece nb-003.
+GET {{baseUrl}}/products?category=notebooks&available=false
+
+###
+
+# @name searchPriceRange
+# Rango de precios.
+# OBSERVAR: monitores entre 200 y 600 -> mn-002 (320), mn-003 (550), mn-005 (210); no mn-004 (inactivo).
+GET {{baseUrl}}/products?category=monitors&min_price=200&max_price=600
+
+###
+
+# @name searchByAttribute
+# Filtro por atributo con prefijo attr. (igualdad exacta; numeros y booleanos se convierten).
+# OBSERVAR: notebooks con ram_gb = 16 -> nb-001.
+GET {{baseUrl}}/products?category=notebooks&attr.ram_gb=16
+
+###
+
+# @name searchByTwoAttributes
+# Varios atributos se combinan con AND.
+# OBSERVAR: notebooks con ram_gb 32 y cpu i7 -> nb-002.
+GET {{baseUrl}}/products?category=notebooks&attr.ram_gb=32&attr.cpu=i7
+
+###
+
+# @name searchWirelessMice
+# Atributo booleano.
+# OBSERVAR: mouses inalambricos (ms-001, ms-003, ms-004).
+GET {{baseUrl}}/products?category=mice&attr.wireless=true
+
+###
+
+# @name searchNotebooksAvailableInPriceRange
+# Escenario del enunciado: notebooks disponibles dentro de un rango de precios.
+# OBSERVAR: con 500..1500 y stock > 0 -> solo nb-001 (nb-003 sin stock; nb-002 y nb-004 fuera de rango).
+GET {{baseUrl}}/products?category=notebooks&available=true&min_price=500&max_price=1500
+
+###
+
+# @name searchPaginated
+# Paginacion con limit y skip.
+# OBSERVAR: 2 productos, saltando los primeros 2.
+GET {{baseUrl}}/products?limit=2&skip=2
+
+###
+
+# @name listCustomers
+# Lista de clientes.
+# OBSERVAR: 200 y 8 clientes (c-001 Ana ... c-008 Tomas) con sus "interests".
+GET {{baseUrl}}/customers
+
+###
+
+# @name getCustomer
+# Un cliente por id.
+# OBSERVAR: 200 y Ana Perez con interests ["notebooks","monitors"].
+GET {{baseUrl}}/customers/{{customerId}}
+
+###
+
+# @name getUnknownCustomer
+# Cliente inexistente.
+# OBSERVAR: 404.
+GET {{baseUrl}}/customers/fantasma

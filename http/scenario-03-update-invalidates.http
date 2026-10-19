@@ -1,0 +1,118 @@
+# Escenario 03 - Actualizar o borrar no deja cache vieja
+# Espeja tests/acceptance/test_03_update_invalidates.py
+@baseUrl = http://localhost:8000
+# Productos dedicados a la demo. Si repetis el escenario, cambia los ids.
+@productId = demo-s03
+@deleteId = demo-s03-del
+
+# @name createProduct
+# Crea un producto con price 100.
+# OBSERVAR: 201 y price 100.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "id": "{{productId}}",
+  "name": "Producto escenario 03",
+  "category": "notebooks",
+  "price": 100,
+  "stock": 10,
+  "attributes": { "ram_gb": 8 }
+}
+
+###
+
+# @name getMiss
+# Primera lectura: carga la cache.
+# OBSERVAR: X-Cache: MISS y price 100.
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name getHit
+# Segunda lectura.
+# OBSERVAR: X-Cache: HIT y price 100 (la cache esta caliente).
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name updatePrice
+# Actualiza el precio (la API usa PUT, parcial).
+# OBSERVAR: 200 y price 150; el resto de los campos no cambia.
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{
+  "price": 150
+}
+
+###
+
+# @name getAfterUpdate
+# Lectura inmediatamente despues del update.
+# OBSERVAR: price 150 (NO el 100 viejo) y X-Cache: MISS (la cache se invalido y se re-leyo de Mongo).
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name getRecached
+# Lectura siguiente.
+# OBSERVAR: price 150 y X-Cache: HIT (volvio a cachearse con el valor nuevo).
+GET {{baseUrl}}/products/{{productId}}
+
+###
+
+# @name partialUpdate
+# Update parcial solo de stock.
+# OBSERVAR: 200; stock 3 y price sigue en 150.
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{
+  "stock": 3
+}
+
+###
+
+# @name createToDelete
+# Crea un segundo producto para probar el borrado.
+# OBSERVAR: 201.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "id": "{{deleteId}}",
+  "name": "Producto a borrar",
+  "category": "notebooks",
+  "price": 100,
+  "stock": 10,
+  "attributes": {}
+}
+
+###
+
+# @name warmDeleteCache
+# Carga la cache del producto a borrar.
+# OBSERVAR: 200 y X-Cache: MISS.
+GET {{baseUrl}}/products/{{deleteId}}
+
+###
+
+# @name deleteProduct
+# Borrado logico.
+# OBSERVAR: 204 sin cuerpo.
+DELETE {{baseUrl}}/products/{{deleteId}}
+
+###
+
+# @name getAfterDelete
+# Lectura tras el borrado.
+# OBSERVAR: 404 (la cache NO sirve el producto borrado).
+GET {{baseUrl}}/products/{{deleteId}}
+
+###
+
+# @name searchAfterDelete
+# El borrado es logico: no aparece en busquedas.
+# OBSERVAR: la lista no contiene demo-s03-del.
+GET {{baseUrl}}/products?category=notebooks&limit=200
