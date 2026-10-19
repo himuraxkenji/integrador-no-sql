@@ -64,7 +64,7 @@ Qué costo/riesgo aceptamos: ...
 - [ ] ¿Cómo combinan "también compraron" con intereses por categoría? ¿Cómo ponderan?
 - [ ] ¿Qué pasa con un producto que se da de baja (soft delete) pero sigue en las relaciones derivadas?
 
-## Evidencia de que el motor hace el trabajo
+## 6. Evidencia de que el motor hace el trabajo
 
 Plantilla a completar. Regla: consultas nativas con el driver oficial, sin ORM, y filtros/ordenamientos/conteos/recorridos resueltos en el motor (ver [guia-consultas.md](guia-consultas.md)). Esta evidencia se revisa en la defensa oral.
 
@@ -112,7 +112,7 @@ Si están en Neo4j, pegar el resumen de `PROFILE` (o `EXPLAIN`) de la consulta d
 - [ ] Ningún recorrido de relaciones se hace con bucles de consultas (N+1)
 - [ ] Todo Cypher usa parámetros (sin concatenar datos del usuario)
 
-## 6. Pruebas y límites
+## 7. Pruebas y límites
 
 - [ ] ¿Qué escenarios de falla probaron además del 07 (motor de caché caído, Mongo caído)? ¿Qué hace la API?
 - [ ] ¿Qué dejaron fuera y por qué?

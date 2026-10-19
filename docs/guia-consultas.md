@@ -294,26 +294,26 @@ ultimos = r.lrange(clave, 0, 4)
 
 Una lista no evita repetidos: si hace falta "sin repetidos", piensen qué comando adicional lo resuelve (por ejemplo `LREM` antes del `LPUSH`) o qué otra estructura lo da naturalmente.
 
-### 2.4 Ranking: conjunto ordenado (`ZINCRBY` + `ZREVRANGE WITHSCORES`)
+### 2.4 Ranking: conjunto ordenado (`ZINCRBY` + `ZRANGE ... REV WITHSCORES`)
 
 Libros más prestados.
 
 ```text
 # redis-cli
 ZINCRBY biblioteca:ranking:prestamos 1 lib-001
-ZREVRANGE biblioteca:ranking:prestamos 0 4 WITHSCORES
+ZRANGE biblioteca:ranking:prestamos 0 4 REV WITHSCORES
 ZSCORE biblioteca:ranking:prestamos lib-001
 ```
 
 ```python
 # redis-py
 r.zincrby("biblioteca:ranking:prestamos", 1, "lib-001")      # (nombre, incremento, miembro)
-top = r.zrevrange("biblioteca:ranking:prestamos", 0, 4, withscores=True)
+top = r.zrange("biblioteca:ranking:prestamos", 0, 4, desc=True, withscores=True)
 # [("lib-001", 12.0), ("lib-007", 9.0), ...] -> ordenado por el motor, puntaje como float
 puntaje = r.zscore("biblioteca:ranking:prestamos", "lib-001")  # float o None
 ```
 
-`ZREVRANGE` está marcado como obsoleto en la documentación de Redis a favor de `ZRANGE ... REV`, pero sigue funcionando; en redis-py 5 también existe `r.zrange(nombre, 0, 4, desc=True, withscores=True)`.
+(Los comandos antiguos `ZREVRANGE` y similares están obsoletos desde Redis 6.2.)
 
 ### 2.5 Hash: `HSET` / `HGETALL`
 
@@ -341,7 +341,7 @@ Redis guarda en memoria. Para sobrevivir a un reinicio usa **RDB** (instantánea
 
 ## 3. Neo4j: `cypher-shell` vs driver `neo4j`
 
-Modelo de ejemplo: `(:Socio {id})-[:PRESTO {fecha}]->(:Libro {id, titulo})-[:DE_GENERO]->(:Genero {nombre})`.
+Modelo de ejemplo: `(:Socio {id})-[:PRESTO {fecha}]->(:Libro {id, titulo})-[:DE_GENERO]->(:Genero {nombre})` y `(:Autor {id, nombre})-[:ESCRIBIO]->(:Libro)`.
 
 Para identificadores y etiquetas con acentos use nombres sin tilde (`PRESTO`) o escápenlos con acentos graves; es más simple evitarlos.
 
@@ -399,45 +399,97 @@ with driver.session() as session:
 - `MERGE` sobre el patrón completo `(s)-[:PRESTO]->(l)` evita relaciones duplicadas.
 - En versiones anteriores del driver se llamaban `write_transaction` / `read_transaction`; en 5.x usen `execute_write` / `execute_read`.
 
-### 3.3 Recorrido de 2 saltos: "quienes leyeron lo mismo también leyeron..."
+### 3.3 Recorrido de varios saltos: autores que comparten género
 
-Libros que leyeron otros socios que comparten al menos un libro con el socio dado, excluyendo los que ya leyó, ordenados por cantidad de socios.
+Autores distintos del dado que escribieron libros de alguno de sus géneros.
 
 ```cypher
 // cypher-shell
-MATCH (s:Socio {id: $socio_id})-[:PRESTO]->(:Libro)<-[:PRESTO]-(otro:Socio)-[:PRESTO]->(l:Libro)
-WHERE otro <> s
-  AND NOT (s)-[:PRESTO]->(l)
-RETURN l.id AS libro_id, l.titulo AS titulo, count(DISTINCT otro) AS lectores
-ORDER BY lectores DESC, titulo ASC
+MATCH (:Autor {id: $autor_id})-[:ESCRIBIO]->(:Libro)-[:DE_GENERO]->(g:Genero)
+      <-[:DE_GENERO]-(:Libro)<-[:ESCRIBIO]-(otro:Autor)
+WHERE otro.id <> $autor_id
+RETURN DISTINCT otro.id AS autor_id, otro.nombre AS nombre
+ORDER BY nombre
 LIMIT $limite;
 ```
 
 ```python
 # driver neo4j
 CONSULTA = """
-MATCH (s:Socio {id: $socio_id})-[:PRESTO]->(:Libro)<-[:PRESTO]-(otro:Socio)-[:PRESTO]->(l:Libro)
-WHERE otro <> s
-  AND NOT (s)-[:PRESTO]->(l)
-RETURN l.id AS libro_id, l.titulo AS titulo, count(DISTINCT otro) AS lectores
-ORDER BY lectores DESC, titulo ASC
+MATCH (:Autor {id: $autor_id})-[:ESCRIBIO]->(:Libro)-[:DE_GENERO]->(g:Genero)
+      <-[:DE_GENERO]-(:Libro)<-[:ESCRIBIO]-(otro:Autor)
+WHERE otro.id <> $autor_id
+RETURN DISTINCT otro.id AS autor_id, otro.nombre AS nombre
+ORDER BY nombre
 LIMIT $limite
 """
 
-def sugerencias(tx, socio_id: str, limite: int) -> list[dict]:
-    resultado = tx.run(CONSULTA, socio_id=socio_id, limite=limite)
+def autores_afines(tx, autor_id: str, limite: int) -> list[dict]:
+    resultado = tx.run(CONSULTA, autor_id=autor_id, limite=limite)
     return [
-        {"libro_id": rec["libro_id"], "titulo": rec["titulo"], "lectores": rec["lectores"]}
+        {"autor_id": rec["autor_id"], "nombre": rec["nombre"]}
         for rec in resultado      # consumir DENTRO de la transacción
     ]
 
 with driver.session() as session:
-    filas = session.execute_read(sugerencias, "soc-007", 5)
+    filas = session.execute_read(autores_afines, "aut-001", 10)
 ```
 
-El recorrido, la exclusión, el conteo y el orden los hace Neo4j. Python solo convierte filas en diccionarios.
+El recorrido, el `DISTINCT`, el orden y el límite los hace Neo4j. Python solo convierte filas en diccionarios.
 
-### 3.4 Consumir resultados
+### 3.4 Camino más corto con longitud variable (`shortestPath`)
+
+Conexión entre dos socios a través de libros que ambos tomaron en préstamo (socio, libro, socio, ...). `*..6` es la **cota superior**: sin ella la búsqueda de longitud variable puede explotar.
+
+```cypher
+// cypher-shell
+MATCH (a:Socio {id: $desde}), (b:Socio {id: $hasta}),
+      p = shortestPath((a)-[:PRESTO*..6]-(b))
+RETURN [n IN nodes(p) | coalesce(n.titulo, n.id)] AS camino, length(p) AS saltos;
+```
+
+```python
+# driver neo4j
+CAMINO = """
+MATCH (a:Socio {id: $desde}), (b:Socio {id: $hasta}),
+      p = shortestPath((a)-[:PRESTO*..6]-(b))
+RETURN [n IN nodes(p) | coalesce(n.titulo, n.id)] AS camino, length(p) AS saltos
+"""
+
+def conexion(tx, desde: str, hasta: str) -> dict | None:
+    rec = tx.run(CAMINO, desde=desde, hasta=hasta).single()
+    return None if rec is None else {"camino": rec["camino"], "saltos": rec["saltos"]}
+
+with driver.session() as session:
+    resultado = session.execute_read(conexion, "soc-001", "soc-009")   # None si no hay camino
+```
+
+### 3.5 Filtro de existencia: `WHERE NOT (patrón)`
+
+Un patrón dentro de `WHERE` pregunta si existe (o no) una relación. Ejemplo independiente: libros que nunca fueron prestados.
+
+```cypher
+// cypher-shell
+MATCH (l:Libro)
+WHERE NOT ()-[:PRESTO]->(l)
+RETURN l.titulo AS titulo
+ORDER BY titulo;
+```
+
+```python
+# driver neo4j
+SIN_PRESTAR = """
+MATCH (l:Libro)
+WHERE NOT ()-[:PRESTO]->(l)
+RETURN l.titulo AS titulo
+ORDER BY titulo
+"""
+
+with driver.session() as session:
+    titulos = session.execute_read(lambda tx: [r["titulo"] for r in tx.run(SIN_PRESTAR)])
+```
+
+### 3.6 Consumir resultados
 
 ```python
 resultado = tx.run("MATCH (l:Libro) RETURN l.id AS id, l.titulo AS titulo LIMIT 3")
@@ -451,21 +503,25 @@ una = resultado.single()               # exactamente una fila (o None / aviso si
 
 El resultado es un flujo ligado a la transacción: consúmanlo antes de que la función de transacción termine. Un nodo completo (`RETURN l`) llega como objeto `Node`; para propiedades usen `dict(rec["l"])` o, mejor, devuelvan solo lo que necesitan (`RETURN l.id AS id`).
 
-### 3.5 `PROFILE` / `EXPLAIN`
+### 3.7 `PROFILE` / `EXPLAIN`
+
+Se muestra sobre la consulta de autores afines (3.3).
 
 ```cypher
 // cypher-shell
 PROFILE
-MATCH (s:Socio {id: 'soc-007'})-[:PRESTO]->(:Libro)<-[:PRESTO]-(otro:Socio)-[:PRESTO]->(l:Libro)
-WHERE otro <> s AND NOT (s)-[:PRESTO]->(l)
-RETURN l.id, count(DISTINCT otro) AS lectores
-ORDER BY lectores DESC LIMIT 5;
+MATCH (:Autor {id: 'aut-001'})-[:ESCRIBIO]->(:Libro)-[:DE_GENERO]->(g:Genero)
+      <-[:DE_GENERO]-(:Libro)<-[:ESCRIBIO]-(otro:Autor)
+WHERE otro.id <> 'aut-001'
+RETURN DISTINCT otro.nombre AS autor, g.nombre AS genero;
 ```
 
 ```python
 # driver neo4j: PROFILE ejecuta la consulta; EXPLAIN solo planifica
 with driver.session() as session:
-    resultado = session.run("PROFILE MATCH (s:Socio {id: $id})-[:PRESTO]->(l:Libro) RETURN l.id", id="soc-007")
+    resultado = session.run(
+        "PROFILE MATCH (:Autor {id: $id})-[:ESCRIBIO]->(l:Libro) RETURN l.titulo", id="aut-001"
+    )
     resumen = resultado.consume()              # consumir el resultado devuelve el resumen
     plan = resumen.profile                     # dict con operador, db_hits, rows, children
 ```
@@ -510,7 +566,7 @@ top = sorted(conteos.items(), key=lambda kv: kv[1], reverse=True)[:5]
 
 ```python
 # BIEN: la estructura ordenada la mantiene el motor; se pide solo el top 5
-top = r.zrevrange("biblioteca:ranking:prestamos", 0, 4, withscores=True)
+top = r.zrange("biblioteca:ranking:prestamos", 0, 4, desc=True, withscores=True)
 ```
 
 (`KEYS` además recorre todo el keyspace y bloquea el servidor.)
@@ -532,23 +588,29 @@ Un `socio_id` como `' }) DETACH DELETE s //` ejecutaría código en la versión 
 ### 4.d Un bucle de consultas por nodo (N+1)
 
 ```python
-# MAL: 1 consulta para los libros del socio + 1 por cada libro
-libros = tx.run("MATCH (:Socio {id: $id})-[:PRESTO]->(l) RETURN l.id AS id", id=socio_id).data()
-lectores = {}
-for libro in libros:
-    lectores[libro["id"]] = tx.run(
-        "MATCH (o:Socio)-[:PRESTO]->(:Libro {id: $lid}) RETURN count(o) AS n", lid=libro["id"]
-    ).single()["n"]
+# MAL: 1 consulta para los géneros del autor + 1 por cada género
+generos = tx.run(
+    "MATCH (:Autor {id: $id})-[:ESCRIBIO]->(:Libro)-[:DE_GENERO]->(g:Genero) RETURN DISTINCT g.nombre AS nombre",
+    id=autor_id,
+).data()
+colegas = {}
+for g in generos:
+    colegas[g["nombre"]] = tx.run(
+        "MATCH (:Genero {nombre: $n})<-[:DE_GENERO]-(:Libro)<-[:ESCRIBIO]-(a:Autor) RETURN DISTINCT a.nombre AS nombre",
+        n=g["nombre"],
+    ).data()
 ```
 
 ```python
-# BIEN: un solo recorrido que devuelve todo agrupado
+# BIEN: un solo recorrido que devuelve todo agrupado por género
 filas = tx.run(
     """
-    MATCH (:Socio {id: $id})-[:PRESTO]->(l:Libro)<-[:PRESTO]-(o:Socio)
-    RETURN l.id AS id, count(o) AS n
+    MATCH (:Autor {id: $id})-[:ESCRIBIO]->(:Libro)-[:DE_GENERO]->(g:Genero)
+          <-[:DE_GENERO]-(:Libro)<-[:ESCRIBIO]-(otro:Autor)
+    WHERE otro.id <> $id
+    RETURN g.nombre AS genero, collect(DISTINCT otro.nombre) AS autores
     """,
-    id=socio_id,
+    id=autor_id,
 ).data()
 ```
 
