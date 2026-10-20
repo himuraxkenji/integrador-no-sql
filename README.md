@@ -28,6 +28,23 @@ Mientras algo no esté implementado, la API responde **501** con el mensaje `TOD
 
 Colección de llamadas HTTP para probar la API y los escenarios: [http/README.md](http/README.md).
 
+## Interfaz de prueba
+
+Abrí **http://localhost:8000/ui** (también con `ADAPTERS=fake`). Es HTML + JS sin build ni red externa, servida por la misma API (`app/ui/`).
+
+| Pestaña | Qué muestra |
+|---------|-------------|
+| Catálogo | Búsqueda con filtros, detalle con badge `HIT`/`MISS` y tiempo, edición y borrado lógico |
+| Actividad | Registrar vistas; contador, recientes del cliente y ranking |
+| Órdenes | Carrito, compra y `sync_status` de cada orden |
+| Recomendaciones | Recomendados con score y motivo, y lo ya comprado (excluido) |
+| Fallo parcial | Falla `relations_down`, estado de sincronización y reconciliación |
+| Escenarios 01-07 | Corre los pasos de `tests/acceptance` y marca cada uno como OK/falló |
+
+Abajo hay un log de todas las requests (método, estado, ms, `X-Cache`). Los TODO sin implementar se ven como "Pendiente de implementar".
+
+Otras herramientas: Swagger UI en `/docs`, ReDoc en `/redoc`, especificación en `/openapi.json` y la colección [http/](http/README.md).
+
 ## Responsabilidad de cada motor
 
 | Responsabilidad | Motor | Qué guarda |

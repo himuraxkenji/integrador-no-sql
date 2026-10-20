@@ -155,6 +155,8 @@ La cátedra entrega un repositorio base. Define con claridad qué viene resuelto
 | Datos | Dataset de ejemplo y script de seed (`python -m scripts.seed`), que carga datos mediante los puertos. |
 | Pruebas | Tests de aceptación de los siete escenarios (`tests/acceptance`) y tests unitarios de los flujos (`tests/unit`). |
 | Documentación | Plantillas. |
+| Interfaz de prueba | UI web en `/ui` (HTML + JS, sin build) y Swagger UI en `/docs` para probar la API y los escenarios. |
+<!-- REVISAR (cátedra): interfaz de prueba (/ui) y Swagger (/docs) agregados a la lista de lo provisto -->
 
 ### 7.2 Qué implementan los equipos
 

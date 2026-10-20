@@ -2,6 +2,8 @@
 
 Archivos `.http` para probar la API y los 7 escenarios a mano (y en la demo). Son texto plano: funcionan en VS Code REST Client, JetBrains HTTP Client y kulala.nvim.
 
+Alternativas sin instalar nada: la interfaz de prueba en `/ui` y Swagger UI en `/docs` (ver el README principal).
+
 ## Como usarlos
 
 - **VS Code**: extension *REST Client* (humao.rest-client). Abrir un `.http` y clic en `Send Request` sobre cada pedido.

@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.activity.router import router as activity_router
 from app.admin.router import router as admin_router
@@ -55,3 +57,12 @@ def health(request: Request):
     engines = request.app.state.container.health()
     ok = all(v in ("ok", "fake") for v in engines.values())
     return JSONResponse({"status": "ok" if ok else "degraded", **engines}, status_code=200 if ok else 503)
+
+
+# Interfaz de prueba (HTML/JS estático, sin build): http://localhost:8000/ui
+app.mount("/ui", StaticFiles(directory=Path(__file__).parent / "ui", html=True), name="ui")
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse("/ui/")
