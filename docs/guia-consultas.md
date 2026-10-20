@@ -8,17 +8,19 @@ Esta guía muestra **sintaxis** y cómo cada comando de consola se traduce al **
 
 | Regla | Detalle |
 |-------|---------|
-| Lenguaje nativo | Documentos de consulta y pipelines (MongoDB), comandos (Redis), Cypher (Neo4j). |
+| Lenguaje nativo | Documentos de consulta y pipelines (MongoDB), comandos literales con `execute_command` (Redis), Cypher (Neo4j). |
 | Solo drivers oficiales | `pymongo`, `redis`, `neo4j`. Sin ORM/ODM/OGM ni query builders. |
 | El motor trabaja | Filtrar, ordenar, contar, agregar y recorrer relaciones se hace en el motor. |
 | Python | Arma parámetros y mapea resultados. |
 
-Se verifica con `uv run pytest tests/test_no_orm.py` (imports y dependencias prohibidas) y en la defensa oral (evidencia de `explain()` / `PROFILE` en `docs/decisions.md`).
+**Por qué Redis es literal y MongoDB no:** el MQL de `pymongo` (`find`, `aggregate`...) ya es el mismo documento de consulta que en `mongosh`; en cambio los métodos de conveniencia de `redis-py` (`zincrby`, `lrange`...) ocultan el comando. Por eso en Redis se envía el comando tal cual con `execute_command("ZINCRBY", ...)`, igual que en `redis-cli`. `Connections.redis` lo exige: solo expone `execute_command` y `pipeline`; cualquier otro método lanza `AttributeError`.
+
+Se verifica con `uv run pytest tests/test_no_orm.py` (imports, dependencias prohibidas y cliente Redis restringido) y en la defensa oral (evidencia de `explain()` / `PROFILE` en `docs/decisions.md`).
 
 ## Índice
 
 1. [MongoDB](#1-mongodb-mongosh-vs-pymongo)
-2. [Redis](#2-redis-redis-cli-vs-redis-py)
+2. [Redis](#2-redis-redis-cli-vs-execute_command)
 3. [Neo4j](#3-neo4j-cypher-shell-vs-driver-neo4j)
 4. [Esto NO](#4-esto-no)
 
@@ -30,7 +32,7 @@ import redis
 from neo4j import GraphDatabase
 
 db = MongoClient("mongodb://localhost:27017")["biblioteca"]
-r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+r = redis.Redis(host="localhost", port=6379, decode_responses=True)  # en el repo: connections.redis (solo execute_command / pipeline)
 driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "<password>"))
 ```
 
@@ -227,9 +229,11 @@ La estructura exacta de `explain()` puede variar según la versión del servidor
 
 ---
 
-## 2. Redis: `redis-cli` vs `redis-py`
+## 2. Redis: `redis-cli` vs `execute_command`
 
-Con `decode_responses=True` las respuestas llegan como `str`; sin él llegan como `bytes` (`b"..."`). Elijan una convención y úsenla en todo el proyecto. Además, Redis devuelve los números como texto: `r.get("x")` devuelve `"3"`, no `3`; conviertan con `int()`.
+En Python **cada comando se envía literal**: `r.execute_command("COMANDO", arg1, arg2, ...)`, igual que lo escribirían en `redis-cli`. No se usan los métodos de conveniencia de `redis-py` (`r.set`, `r.get`, `r.zincrby`, `r.lrange`...). En el repo `connections.redis` solo acepta `execute_command` y `pipeline`; lo demás lanza `AttributeError`.
+
+Con `decode_responses=True` las respuestas llegan como `str`; sin él llegan como `bytes` (`b"..."`). Además, con `execute_command` **la conversión de tipos es la que hace `redis-py` por comando** (verificado con redis-py 8.1.0, la versión de `uv.lock`, contra Redis 7): `GET` devuelve `str` (`"3"`, no `3`; conviertan con `int()`), `INCR`/`DEL`/`LPUSH` devuelven `int`, `SET` devuelve `True`, y los puntajes de `ZINCRBY`/`ZSCORE` llegan como `float` (`1.0`). No lo asuman: imprímanlo una vez (`print(repr(...))`) con su versión.
 
 **Convención de nombres de claves:** `aplicacion:entidad:{id}[:subrecurso]`, por ejemplo `biblioteca:libro:lib-001`, `biblioteca:socio:soc-007:ultimos`, `biblioteca:ranking:prestamos`. Ayuda a leer, a borrar por patrón en desarrollo y a evitar colisiones.
 
@@ -244,14 +248,14 @@ DEL biblioteca:libro:lib-001
 ```
 
 ```python
-# redis-py
+# redis-py: execute_command
 import json
 
 clave = "biblioteca:libro:lib-001"
-r.set(clave, json.dumps({"titulo": "Rayuela"}), ex=60)   # valor y TTL en UNA operación atómica
-valor = r.get(clave)             # str o None si no existe / venció
-ttl = r.ttl(clave)               # segundos restantes; -2 no existe, -1 sin vencimiento
-r.delete(clave)                  # devuelve cuántas claves borró (0 si no existía)
+r.execute_command("SET", clave, json.dumps({"titulo": "Rayuela"}), "EX", 60)  # True; valor y TTL en UNA operación atómica
+valor = r.execute_command("GET", clave)      # str, o None si no existe / venció
+ttl = r.execute_command("TTL", clave)        # int: segundos restantes; -2 no existe, -1 sin vencimiento
+borradas = r.execute_command("DEL", clave)   # int: cuántas claves borró (0 si no existía)
 ```
 
 `SET` y luego `EXPIRE` son dos comandos y entre ambos puede fallar algo; `SET ... EX` es una sola operación.
@@ -261,12 +265,13 @@ r.delete(clave)                  # devuelve cuántas claves borró (0 si no exis
 ```text
 # redis-cli
 INCR biblioteca:libro:lib-001:prestamos
+INCRBY biblioteca:libro:lib-001:prestamos 5
 ```
 
 ```python
-# redis-py
-total = r.incr("biblioteca:libro:lib-001:prestamos")   # devuelve el valor nuevo (int)
-r.incrby("biblioteca:libro:lib-001:prestamos", 5)
+# redis-py: execute_command
+total = r.execute_command("INCR", "biblioteca:libro:lib-001:prestamos")   # int: el valor nuevo
+r.execute_command("INCRBY", "biblioteca:libro:lib-001:prestamos", 5)
 ```
 
 Es atómico en el servidor: no hay que hacer `GET`, sumar en Python y `SET` (condición de carrera).
@@ -283,14 +288,14 @@ LRANGE biblioteca:socio:soc-007:ultimos 0 4
 ```
 
 ```python
-# redis-py
+# redis-py: execute_command
 clave = "biblioteca:socio:soc-007:ultimos"
-pipe = r.pipeline()              # MULTI/EXEC por defecto: los dos comandos van juntos
-pipe.lpush(clave, "lib-001")
-pipe.ltrim(clave, 0, 4)          # conserva solo los índices 0..4
-pipe.execute()
-ultimos = r.lrange(clave, 0, 4)
+r.execute_command("LPUSH", clave, "lib-001")     # int: largo de la lista
+r.execute_command("LTRIM", clave, 0, 4)          # True; conserva solo los índices 0..4
+ultimos = r.execute_command("LRANGE", clave, 0, 4)   # list[str]; [] si la clave no existe
 ```
+
+Estos dos comandos de escritura, enviados por separado, no son atómicos: ver 2.7 (pipeline `MULTI`/`EXEC`).
 
 Una lista no evita repetidos: si hace falta "sin repetidos", piensen qué comando adicional lo resuelve (por ejemplo `LREM` antes del `LPUSH`) o qué otra estructura lo da naturalmente.
 
@@ -306,11 +311,20 @@ ZSCORE biblioteca:ranking:prestamos lib-001
 ```
 
 ```python
-# redis-py
-r.zincrby("biblioteca:ranking:prestamos", 1, "lib-001")      # (nombre, incremento, miembro)
-top = r.zrange("biblioteca:ranking:prestamos", 0, 4, desc=True, withscores=True)
-# [("lib-001", 12.0), ("lib-007", 9.0), ...] -> ordenado por el motor, puntaje como float
-puntaje = r.zscore("biblioteca:ranking:prestamos", "lib-001")  # float o None
+# redis-py: execute_command
+r.execute_command("ZINCRBY", "biblioteca:ranking:prestamos", 1, "lib-001")     # (clave, incremento, miembro) -> float: puntaje nuevo
+top = r.execute_command("ZRANGE", "biblioteca:ranking:prestamos", 0, 4, "REV", "WITHSCORES")
+puntaje = r.execute_command("ZSCORE", "biblioteca:ranking:prestamos", "lib-001")  # float, o None si el miembro no existe
+```
+
+Forma de `top` (ordenado por el motor): con **redis-py 8.1.0** (`uv.lock`) llega como lista de pares con el puntaje `float`: `[["lib-001", 12.0], ["lib-007", 9.0]]`. Con versiones anteriores de `redis-py` puede llegar como lista **plana** `["lib-001", "12", "lib-007", "9"]`, porque `execute_command` no le pasa a la conversión la opción `WITHSCORES`. Para no depender de la versión:
+
+```python
+def pares(respuesta):
+    """Normaliza ZRANGE ... WITHSCORES a [(miembro, puntaje_float)], venga plano o en pares."""
+    if respuesta and isinstance(respuesta[0], (list, tuple)):
+        return [(m, float(p)) for m, p in respuesta]
+    return [(m, float(p)) for m, p in zip(respuesta[0::2], respuesta[1::2])]
 ```
 
 (Los comandos antiguos `ZREVRANGE` y similares están obsoletos desde Redis 6.2.)
@@ -325,10 +339,10 @@ HINCRBY biblioteca:socio:soc-007 prestamos 1
 ```
 
 ```python
-# redis-py
-r.hset("biblioteca:socio:soc-007", mapping={"nombre": "Ana", "plan": "premium"})
-socio = r.hgetall("biblioteca:socio:soc-007")     # dict[str, str]; vacío si no existe
-r.hincrby("biblioteca:socio:soc-007", "prestamos", 1)
+# redis-py: execute_command
+r.execute_command("HSET", "biblioteca:socio:soc-007", "nombre", "Ana", "plan", "premium")  # int: campos nuevos
+socio = r.execute_command("HGETALL", "biblioteca:socio:soc-007")   # dict[str, str]; {} si no existe
+r.execute_command("HINCRBY", "biblioteca:socio:soc-007", "prestamos", 1)                  # int
 ```
 
 Todos los valores de un hash son texto: conviertan tipos al leer.
@@ -336,6 +350,27 @@ Todos los valores de un hash son texto: conviertan tipos al leer.
 ### 2.6 Persistencia
 
 Redis guarda en memoria. Para sobrevivir a un reinicio usa **RDB** (instantáneas periódicas: se puede perder lo escrito después de la última) y/o **AOF** (registro de cada escritura: pierde menos, pesa más). Qué pasa con sus datos tras un reinicio depende de lo que tenga activado su `compose.yaml`; documenten qué esperan perder y si es aceptable.
+
+### 2.7 Varios comandos atómicos: pipeline `MULTI` / `EXEC`
+
+```text
+# redis-cli
+MULTI
+LPUSH biblioteca:socio:soc-007:ultimos lib-001
+LTRIM biblioteca:socio:soc-007:ultimos 0 4
+EXEC
+```
+
+```python
+# redis-py: pipeline + execute_command
+clave = "biblioteca:socio:soc-007:ultimos"
+pipe = r.pipeline(transaction=True)      # MULTI/EXEC: los comandos se ejecutan juntos o ninguno
+pipe.execute_command("LPUSH", clave, "lib-001")
+pipe.execute_command("LTRIM", clave, 0, 4)
+resultados = pipe.execute()              # [1, True]: una respuesta por comando, en orden
+```
+
+En el pipeline también se usa `execute_command`; `execute()` envía todo. El pipeline restringido del repo solo expone esos dos métodos.
 
 ---
 
@@ -559,14 +594,14 @@ argentinos = list(db.libros.find({"autor.pais": "AR", "anio": {"$gte": 1950}}))
 
 ```python
 # MAL: lee todos los contadores y ordena en Python
-claves = r.keys("biblioteca:libro:*:prestamos")
-conteos = {k: int(r.get(k)) for k in claves}
+claves = r.execute_command("KEYS", "biblioteca:libro:*:prestamos")
+conteos = {k: int(r.execute_command("GET", k)) for k in claves}
 top = sorted(conteos.items(), key=lambda kv: kv[1], reverse=True)[:5]
 ```
 
 ```python
 # BIEN: la estructura ordenada la mantiene el motor; se pide solo el top 5
-top = r.zrange("biblioteca:ranking:prestamos", 0, 4, desc=True, withscores=True)
+top = r.execute_command("ZRANGE", "biblioteca:ranking:prestamos", 0, 4, "REV", "WITHSCORES")
 ```
 
 (`KEYS` además recorre todo el keyspace y bloquea el servidor.)
@@ -616,7 +651,21 @@ filas = tx.run(
 
 Lo mismo vale en MongoDB: un `find` por documento dentro de un bucle se reemplaza por `$in` o por `$lookup`.
 
-### 4.e Una clase modelo de ODM
+### 4.e Métodos de conveniencia de redis-py
+
+```python
+# MAL: oculta el comando; no se lee como redis-cli (y connections.redis lo rechaza con AttributeError)
+r.zincrby("biblioteca:ranking:prestamos", 1, "lib-001")
+r.set("biblioteca:libro:lib-001", "...", ex=60)
+```
+
+```python
+# BIEN: el comando literal
+r.execute_command("ZINCRBY", "biblioteca:ranking:prestamos", 1, "lib-001")
+r.execute_command("SET", "biblioteca:libro:lib-001", "...", "EX", 60)
+```
+
+### 4.f Una clase modelo de ODM
 
 ```python
 # MAL: ODM (mongoengine / beanie / odmantic): oculta la consulta y no está permitido

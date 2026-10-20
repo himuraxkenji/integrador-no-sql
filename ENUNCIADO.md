@@ -133,7 +133,7 @@ graph LR
 - Dataset inicial común proporcionado por la cátedra para facilitar pruebas comparables.
 - Operaciones persistentes con comportamiento definido ante reinicios, de acuerdo con cada almacenamiento.
 - No se admite utilizar una sola base para toda la solución y las otras únicamente de forma decorativa.
-- Consultas en el lenguaje nativo de cada motor (documentos de consulta y pipelines de agregación en MongoDB, comandos en Redis, Cypher en Neo4j) usando únicamente los drivers oficiales. No se admiten ORM/ODM/OGM ni constructores de consultas. Filtros, ordenamientos, agregaciones, conteos y recorridos de relaciones se resuelven en el motor; Python solo arma parámetros y mapea resultados. Ver [docs/guia-consultas.md](docs/guia-consultas.md).
+- Consultas en el lenguaje nativo de cada motor (documentos de consulta y pipelines de agregación en MongoDB, comandos literales en Redis, Cypher en Neo4j) usando únicamente los drivers oficiales. En Redis los comandos se envían literales con `execute_command("ZINCRBY", ...)`, como en `redis-cli`, y no con los métodos de conveniencia del driver (`zincrby`, `set`, `get`...); MongoDB mantiene los métodos de `pymongo`, cuyo lenguaje de consulta ya es el nativo. No se admiten ORM/ODM/OGM ni constructores de consultas. Filtros, ordenamientos, agregaciones, conteos y recorridos de relaciones se resuelven en el motor; Python solo arma parámetros y mapea resultados. Ver [docs/guia-consultas.md](docs/guia-consultas.md).
 <!-- REVISAR (cátedra): regla de lenguaje nativo agregada -->
 
 ## 7. Repositorio base provisto por la cátedra
@@ -188,7 +188,7 @@ Los equipos no deben modificar los routers, los contratos ni los tests de acepta
 | Permitido | No permitido |
 |---|---|
 | `pymongo` con filtros, proyecciones y pipelines de agregación | MongoEngine, Beanie, ODMantic, umongo u otros ODM |
-| `redis-py` con comandos nativos (`SET`, `INCR`, `ZINCRBY`, `LPUSH`...) | redis-om u otras capas de objetos sobre Redis |
+| Redis con comandos literales vía `execute_command("ZINCRBY", ...)` (también dentro de `pipeline()`) | Métodos de conveniencia del driver de Redis (`zincrby`, `set`, `get`, `lrange`...) y redis-om u otras capas de objetos |
 | Driver `neo4j` con Cypher parametrizado | neomodel, OGM de py2neo u otros OGM |
 | Índices y restricciones creados por el equipo | SQLAlchemy, SQLModel u otros query builders |
 | Python para armar parámetros y mapear resultados a los modelos de dominio | Traer colecciones completas y filtrar u ordenar en Python |
@@ -197,7 +197,7 @@ Los equipos no deben modificar los routers, los contratos ni los tests de acepta
 
 Cómo se controla:
 
-- `tests/test_no_orm.py` verifica automáticamente imports y dependencias prohibidas (`uv run pytest tests/test_no_orm.py`).
+- `tests/test_no_orm.py` verifica automáticamente imports y dependencias prohibidas (`uv run pytest tests/test_no_orm.py`) y que `Connections.redis` solo acepte `execute_command` y `pipeline`.
 - La evidencia de `explain()` / `PROFILE` se registra en `docs/decisions.md`.
 - Se consulta en la defensa oral.
 

@@ -99,7 +99,7 @@ Los `mongo_*.py` usan MongoDB (fijo). Los otros cuatro reciben el objeto `Connec
 - [ ] `uv run pytest tests/test_no_orm.py` en verde y evidencia de `explain()`/`PROFILE` en `docs/decisions.md`
 
 <!-- REVISAR (cátedra): regla de lenguaje nativo agregada -->
-> **Regla: lenguaje nativo, sin ORM.** Las consultas se escriben en el lenguaje de cada motor (filtros y pipelines en MongoDB, comandos en Redis, Cypher en Neo4j) con los drivers oficiales. Sin ORM/ODM/OGM, y el filtrado, ordenamiento, conteo y recorrido se hace en el motor, no en Python. Detalle en [ENUNCIADO.md](ENUNCIADO.md) (secciones 6 y 7.4), ejemplos en [docs/guia-consultas.md](docs/guia-consultas.md). Se verifica con `uv run pytest tests/test_no_orm.py`.
+> **Regla: lenguaje nativo, sin ORM.** Las consultas se escriben en el lenguaje de cada motor (filtros y pipelines en MongoDB, comandos literales en Redis con `execute_command("ZINCRBY", ...)` y no con `zincrby()`/`set()`/`get()`, Cypher en Neo4j) con los drivers oficiales. Sin ORM/ODM/OGM, y el filtrado, ordenamiento, conteo y recorrido se hace en el motor, no en Python. Detalle en [ENUNCIADO.md](ENUNCIADO.md) (secciones 6 y 7.4), ejemplos en [docs/guia-consultas.md](docs/guia-consultas.md). Se verifica con `uv run pytest tests/test_no_orm.py`.
 
 **Fuera del alcance:** autenticación, frontend, descontar stock al comprar (pueden agregarlo y justificarlo en `decisions.md`).
 

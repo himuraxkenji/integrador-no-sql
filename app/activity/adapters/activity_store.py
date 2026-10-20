@@ -16,6 +16,8 @@ class ActivityStoreAdapter(ActivityStore):
 
     `recent_limit` viene de la configuración (RECENT_VIEWS_LIMIT).
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`, `connections.neo4j`).
+    Si eligen Redis: `connections.redis` solo acepta comandos literales vía
+    `execute_command(...)` / `pipeline()` (no métodos de conveniencia de redis-py).
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para cada una de las
     tres necesidades, el patrón de acceso y la alternativa descartada.

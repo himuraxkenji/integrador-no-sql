@@ -15,7 +15,9 @@ class ProductCacheAdapter(ProductCache):
     Escenarios: 01 (miss y carga), 02 (hit), 03 (la actualización invalida).
 
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`,
-    `connections.neo4j`) para que usen la que elijan. Pistas de plomería:
+    `connections.neo4j`) para que usen la que elijan. Si eligen Redis, `connections.redis`
+    solo acepta comandos literales vía `execute_command(...)` / `pipeline()`.
+    Pistas de plomería:
     `product.model_dump_json()` serializa y `Product.model_validate_json(texto)` deserializa.
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para la caché,

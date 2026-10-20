@@ -21,6 +21,8 @@ class PurchaseRelationsAdapter(PurchaseRelations):
     ¿Cómo lo garantiza el motor que eligieron?
 
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`, `connections.neo4j`).
+    Si eligen Redis: `connections.redis` solo acepta comandos literales vía
+    `execute_command(...)` / `pipeline()` (no métodos de conveniencia de redis-py).
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para las relaciones
     de compra, cómo las modelaron y por qué descartaron las otras opciones.

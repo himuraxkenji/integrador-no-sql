@@ -19,7 +19,7 @@ def main() -> None:
     try:
         print("Borrando datos previos...")
         conns.mongo_client.drop_database(conns.mongo.name)
-        conns.redis.flushdb()
+        conns.redis.execute_command("FLUSHDB")
         with conns.neo4j.session() as session:
             session.run("MATCH (n) DETACH DELETE n").consume()
 

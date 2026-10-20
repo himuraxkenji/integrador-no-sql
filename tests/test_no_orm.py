@@ -2,6 +2,8 @@
 
 Regla (ENUNCIADO.md, secciones 6 y 7.4): las consultas se escriben en el lenguaje
 nativo de cada motor (MongoDB, Redis, Neo4j) mediante pymongo, redis-py y neo4j.
+En Redis, además, los comandos van LITERALES: `execute_command("ZINCRBY", ...)`, no
+`zincrby(...)`. `Connections.redis` lo hace cumplir (ver los tests al final).
 Guía con ejemplos: docs/guia-consultas.md.
 
 Límite de este test: NO intenta detectar "filtrar/ordenar/agregar en Python"
@@ -16,6 +18,10 @@ import ast
 import re
 import tomllib
 from pathlib import Path
+
+import pytest
+
+from app.infrastructure.connections import RedisCommands
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -129,4 +135,82 @@ def test_no_orm_dependencies_in_pyproject():
         "Solo se admiten los drivers oficiales: pymongo, redis, neo4j. "
         "Ver docs/guia-consultas.md y ENUNCIADO.md (7.4).\n"
         "Dependencias prohibidas: " + ", ".join(violations)
+    )
+
+
+class _StubRedis:
+    """Cliente redis-py falso: registra lo que recibe, sin conectarse a nada."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
+
+    def execute_command(self, *args):
+        self.calls.append(args)
+        return "OK"
+
+    def pipeline(self, transaction=True):
+        return _StubPipeline(self)
+
+
+class _StubPipeline:
+    def __init__(self, parent: _StubRedis) -> None:
+        self.parent = parent
+        self.queued: list[tuple] = []
+
+    def execute_command(self, *args):
+        self.queued.append(args)
+
+    def execute(self):
+        self.parent.calls.extend(self.queued)
+        return ["OK"] * len(self.queued)
+
+    def reset(self) -> None:
+        self.queued.clear()
+
+
+@pytest.mark.parametrize("method", ["zincrby", "set", "get", "lrange", "zrange", "flushdb"])
+def test_redis_rejects_convenience_methods(method):
+    redis = RedisCommands(_StubRedis())
+    with pytest.raises(AttributeError, match="execute_command"):
+        getattr(redis, method)
+
+
+def test_redis_allows_execute_command_and_pipeline():
+    stub = _StubRedis()
+    redis = RedisCommands(stub)
+
+    assert redis.execute_command("ZINCRBY", "nexus:views", 1, "p1") == "OK"
+
+    pipe = redis.pipeline(transaction=True)
+    pipe.execute_command("LPUSH", "k", "a")
+    pipe.execute_command("LTRIM", "k", 0, 4)
+    assert pipe.execute() == ["OK", "OK"]
+
+    assert stub.calls == [
+        ("ZINCRBY", "nexus:views", 1, "p1"),
+        ("LPUSH", "k", "a"),
+        ("LTRIM", "k", 0, 4),
+    ]
+
+
+def test_redis_pipeline_rejects_convenience_methods():
+    pipe = RedisCommands(_StubRedis()).pipeline()
+    for method in ("zincrby", "lpush", "ltrim", "set"):
+        with pytest.raises(AttributeError, match="execute_command"):
+            getattr(pipe, method)
+
+
+def test_raw_redis_client_only_touched_in_connections():
+    """Nadie fuera de connections.py puede saltarse el cliente restringido (`._raw`)."""
+    allowed = ROOT / "app" / "infrastructure" / "connections.py"
+    violations = [
+        f"{path.relative_to(ROOT)}:{node.lineno}"
+        for path in _python_files()
+        if path != allowed
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
+        if isinstance(node, ast.Attribute) and node.attr == "_raw"
+    ]
+    assert not violations, (
+        "Usen connections.redis.execute_command('COMANDO', ...) (ver docs/guia-consultas.md). "
+        "No accedan al cliente interno: " + ", ".join(violations)
     )

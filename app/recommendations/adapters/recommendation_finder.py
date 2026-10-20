@@ -11,6 +11,8 @@ class RecommendationFinderAdapter(RecommendationFinder):
     Lee las relaciones que escribió `PurchaseRelationsAdapter` (puede ser el mismo motor
     u otro, si el equipo decide proyectar los datos de otra forma).
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`, `connections.neo4j`).
+    Si eligen Redis: `connections.redis` solo acepta comandos literales vía
+    `execute_command(...)` / `pipeline()` (no métodos de conveniencia de redis-py).
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para recomendar,
     cómo expresan la consulta y por qué descartaron las otras opciones.
