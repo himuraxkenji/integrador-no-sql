@@ -3,7 +3,6 @@ import { request, ApiError, ensure } from "./api.js";
 import { h, badge } from "./util.js";
 
 const CUSTOMER = "c-008";
-const RECENT_VIEWS = 12; // los tests usan RECENT_VIEWS_LIMIT + 2 (por defecto 10 + 2)
 
 const show = (v) => (typeof v === "string" ? v : JSON.stringify(v));
 const ids = (recs) => recs.map((r) => r.product.id);
@@ -142,9 +141,11 @@ export const SCENARIOS = [
       c.check("Más reciente primero: [a, b]", [a.id, b.id], recent.slice(0, 2), recent[0] === a.id && recent[1] === b.id);
       c.check("Sin duplicados", "sin duplicados", `${recent.length} ids, ${new Set(recent).size} únicos`, recent.length === new Set(recent).size);
 
-      for (let i = 0; i < RECENT_VIEWS; i++) await c.view((await c.newProduct()).id, "c-007");
+      // El límite configurado lo informa la API (campo `limit`); se envían limit + 2 vistas.
+      const limit = Number((await c.req("GET", "/customers/c-007/recent")).data?.limit) || 0;
+      for (let i = 0; i < limit + 2; i++) await c.view((await c.newProduct()).id, "c-007");
       const bounded = (await c.req("GET", "/customers/c-007/recent", { query: { limit: 1000 } })).data?.product_ids || [];
-      c.check(`Historial acotado (${RECENT_VIEWS} vistas, límite por defecto 10)`, `< ${RECENT_VIEWS}`, bounded.length, bounded.length > 0 && bounded.length < RECENT_VIEWS);
+      c.check(`Historial acotado (${limit + 2} vistas, límite ${limit})`, limit, bounded.length, limit > 0 && bounded.length === limit);
 
       const popular = await c.newProduct();
       const quiet = await c.newProduct();

@@ -17,12 +17,11 @@ const TABS = [
   { id: "escenarios", label: "Escenarios 01-07", mod: scenarios },
 ];
 
-// MongoDB es la fuente de verdad; los otros dos motores se muestran sin nombre
-// porque cada equipo elige cuál usa para sus almacenes derivados.
+// Los tres motores son obligatorios; qué responsabilidad cubre cada derivado es decisión del equipo.
 const ENGINES = [
-  ["mongo", "MongoDB (fuente de verdad)"],
-  ["redis", "Motor 2"],
-  ["neo4j", "Motor 3"],
+  ["mongo", "MongoDB · fuente de verdad"],
+  ["redis", "Redis"],
+  ["neo4j", "Neo4j"],
 ];
 
 const root = document.getElementById("app");

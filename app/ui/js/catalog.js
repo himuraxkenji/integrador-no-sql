@@ -51,6 +51,12 @@ export async function onShow() {
   });
 }
 
+function attrChips(attrs) {
+  const entries = Object.entries(attrs || {});
+  if (!entries.length) return "-";
+  return h("div", { class: "attr-chips" }, entries.map(([k, v]) => h("span", { class: "attr-chip" }, `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)));
+}
+
 async function search() {
   await guard(errSlot, async () => {
     const query = { category: category.value, min_price: minPrice.value, max_price: maxPrice.value, available: available.value, limit: 100 };
@@ -62,9 +68,9 @@ async function search() {
     }
     const rows = list.map((p) => ({
       attrs: { class: "clickable" + (p.id === currentId ? " selected" : ""), onClick: () => consult(p.id) },
-      cells: [p.id, p.name, p.category, fmtPrice(p.price), p.stock, p.attributes && Object.keys(p.attributes).length ? Object.entries(p.attributes).map(([k, v]) => `${k}=${v}`).join(", ") : "-"],
+      cells: [p.id, p.name, p.category, fmtPrice(p.price), p.stock, attrChips(p.attributes)],
     }));
-    results.replaceChildren(h("p", { class: "muted" }, `${list.length} producto(s)`), table(["Id", "Nombre", "Categoría", "Precio", "Stock", "Atributos"], rows));
+    results.replaceChildren(h("p", { class: "muted" }, `${list.length} producto(s)`), table(["Id", "Nombre", "Categoría", "Precio", "Stock", "Atributos"], rows, "catalog"));
   });
 }
 
@@ -76,6 +82,7 @@ async function consult(id, hint) {
     const res = ensure(await request("GET", `/products/${encodeURIComponent(id)}`));
     const p = res.data;
     const kind = res.cache === "HIT" ? "green" : res.cache === "MISS" ? "orange" : "gray";
+    // replaceChildren no ignora null (lo escribe como "null"): se arma la lista sin huecos.
     detail.replaceChildren(
       h(
         "div",
@@ -84,7 +91,9 @@ async function consult(id, hint) {
         h("div", {}, h("div", {}, `X-Cache: ${res.cache || "(sin header)"}`), h("div", { class: "muted" }, `${res.ms} ms`)),
         h("button", { class: "secondary", onClick: () => consult(id, "Consulta repetida") }, "Volver a consultar"),
       ),
-      hint ? h("div", { class: "box info" }, hint) : null,
+      ...(hint ? [h("div", { class: "box info" }, hint)] : []),
+      h("h3", {}, "Atributos"),
+      attrChips(p.attributes),
       h("pre", {}, json(p)),
       editForm(p),
     );
