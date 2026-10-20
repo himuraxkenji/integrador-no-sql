@@ -27,13 +27,14 @@ Content-Type: application/json
 # @name createMonitor
 # Crea un producto de otra categoria SIN id (el servicio genera uno) y con otros atributos.
 # OBSERVAR: 201 y un "id" generado; attributes distintos (size_inches, panel).
+# Precio 750: queda fuera del rango 200..600 de searchPriceRange, así no altera ese resultado.
 POST {{baseUrl}}/products
 Content-Type: application/json
 
 {
   "name": "Monitor Demo 27",
   "category": "monitors",
-  "price": 300,
+  "price": 750,
   "stock": 3,
   "attributes": { "size_inches": 27, "panel": "IPS", "refresh_hz": 144 }
 }

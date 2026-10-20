@@ -1,6 +1,6 @@
 services:
   mongo:
-    image: mongo:7
+    image: mongo:7.0
     ports: ["27017:27017"]
     volumes:
       - mongo_data:/data/db
@@ -11,7 +11,7 @@ services:
       retries: 12
 
   redis:
-    image: redis:7
+    image: redis:7.4
     # AOF activado: comportamiento definido ante reinicios.
     # Sin esto, un reinicio de Redis pierde contadores e historial de vistas
     # (la caché sí se puede perder sin drama; los contadores quizás no).
@@ -27,7 +27,7 @@ services:
       retries: 12
 
   neo4j:
-    image: neo4j:5-community
+    image: neo4j:5.26-community
     environment:
       # Credencial de desarrollo local; se puede cambiar desde .env.
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-nexus-dev-password}
