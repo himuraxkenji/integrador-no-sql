@@ -45,6 +45,23 @@ Abajo hay un log de todas las requests (método, estado, ms, `X-Cache`). Los TOD
 
 Otras herramientas: Swagger UI en `/docs`, ReDoc en `/redoc`, especificación en `/openapi.json` y la colección [http/](http/README.md).
 
+## Clientes de base de datos
+
+Para mirar los datos mientras desarrollan, hay clientes web **opcionales** (perfil `clients` de Compose: no arrancan con `docker compose up`, así no consumen recursos si no los usan). Son solo para desarrollo local: sin autenticación.
+
+```bash
+make clients        # mongo-express y RedisInsight
+make clients-down   # los baja (las bases siguen corriendo)
+```
+
+| Motor | Cliente web | Consola | Conexión manual |
+|-------|-------------|---------|-----------------|
+| MongoDB | mongo-express: http://localhost:8081 | `make mongosh` | `mongodb://localhost:27017`, base `nexus`, sin credenciales |
+| Redis | RedisInsight: http://localhost:5540 (conexión `nexus-redis` ya creada) | `make redis-cli` | `localhost:6379`, sin credenciales |
+| Neo4j | Neo4j Browser: http://localhost:7474 (siempre disponible) | `make cypher-shell` | `neo4j://localhost:7687`, usuario `neo4j`, clave `NEO4J_PASSWORD` (por defecto `nexus-dev-password`) |
+
+Las consolas funcionan aunque no levanten los clientes web. Probá la consulta en la consola y después traducila al driver: ver [docs/guia-consultas.md](docs/guia-consultas.md).
+
 ## Responsabilidad de cada motor
 
 | Responsabilidad | Motor | Qué guarda |

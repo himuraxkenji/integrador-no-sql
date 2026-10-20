@@ -2,7 +2,7 @@
 
 Archivos `.http` para probar la API y los 7 escenarios a mano (y en la demo). Son texto plano: funcionan en VS Code REST Client, JetBrains HTTP Client y kulala.nvim.
 
-Alternativas sin instalar nada: la interfaz de prueba en `/ui` y Swagger UI en `/docs` (ver el README principal).
+Alternativas sin instalar nada: la interfaz de prueba en `/ui` y Swagger UI en `/docs` (ver el README principal). Para mirar los datos en MongoDB, Redis y Neo4j: [Clientes de base de datos](../README.md#clientes-de-base-de-datos).
 
 ## Como usarlos
 

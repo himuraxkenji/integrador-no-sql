@@ -156,7 +156,9 @@ La cátedra entrega un repositorio base. Define con claridad qué viene resuelto
 | Pruebas | Tests de aceptación de los siete escenarios (`tests/acceptance`) y tests unitarios de los flujos (`tests/unit`). |
 | Documentación | Plantillas. |
 | Interfaz de prueba | UI web en `/ui` (HTML + JS, sin build) y Swagger UI en `/docs` para probar la API y los escenarios. |
+| Clientes de base de datos | mongo-express, RedisInsight y Neo4j Browser (opcionales, perfil `clients` de Compose), más `make mongosh`, `make redis-cli` y `make cypher-shell`. |
 <!-- REVISAR (cátedra): interfaz de prueba (/ui) y Swagger (/docs) agregados a la lista de lo provisto -->
+<!-- REVISAR (cátedra): clientes de base de datos (mongo-express, RedisInsight, consolas) agregados a la lista de lo provisto -->
 
 ### 7.2 Qué implementan los equipos
 

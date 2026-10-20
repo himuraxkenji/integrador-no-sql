@@ -1,7 +1,7 @@
 services:
   mongo:
     image: mongo:7.0
-    ports: ["27017:27017"]
+    ports: ["127.0.0.1:27017:27017"]
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -17,7 +17,7 @@ services:
     # (la caché sí se puede perder sin drama; los contadores quizás no).
     # Discutan en docs/decisions.md qué consecuencias tiene para su diseño.
     command: ["redis-server", "--appendonly", "yes"]
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
     volumes:
       - redis_data:/data
     healthcheck:
@@ -32,8 +32,8 @@ services:
       # Credencial de desarrollo local; se puede cambiar desde .env.
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-nexus-dev-password}
     ports:
-      - "7474:7474" # Neo4j Browser
-      - "7687:7687" # Bolt
+      - "127.0.0.1:7474:7474" # Neo4j Browser
+      - "127.0.0.1:7687:7687" # Bolt
     volumes:
       - neo4j_data:/data
     healthcheck:
@@ -65,7 +65,38 @@ services:
       redis: { condition: service_healthy }
       neo4j: { condition: service_healthy }
 
+  # --- Clientes de base de datos (opcionales: perfil "clients") ---
+  # No arrancan con `docker compose up`; se levantan con `make clients`.
+  # Solo para desarrollo local: sin autenticación y atados a las bases del compose.
+  # Todos los puertos de bases y clientes se publican solo en 127.0.0.1 (no quedan expuestos en la red).
+  mongo-express:
+    image: mongo-express:1.0.2-20-alpine3.19
+    profiles: ["clients"]
+    ports: ["127.0.0.1:8081:8081"] # http://localhost:8081
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017
+      ME_CONFIG_BASICAUTH: "false" # desarrollo local: sin usuario/clave
+    depends_on:
+      mongo: { condition: service_healthy }
+
+  redisinsight:
+    image: redis/redisinsight:3.8.0
+    profiles: ["clients"]
+    ports: ["127.0.0.1:5540:5540"] # http://localhost:5540
+    environment:
+      # Conexión preconfigurada: aparece en la lista sin configurar nada a mano.
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: "6379"
+      RI_REDIS_ALIAS: nexus-redis
+      RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
+      RI_ANALYTICS_OPT_OUT: "true"
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      redis: { condition: service_healthy }
+
 volumes:
   mongo_data:
   redis_data:
   neo4j_data:
+  redisinsight_data:
