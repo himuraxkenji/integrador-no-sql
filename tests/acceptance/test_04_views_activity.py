@@ -1,9 +1,6 @@
 """Escenario 04: las vistas actualizan contadores, historial reciente y ranking."""
 
-import os
-
 CUSTOMER = "c-008"
-RECENT_LIMIT = int(os.environ.get("RECENT_VIEWS_LIMIT", "10"))
 
 
 def view(api, product_id, customer=CUSTOMER):
@@ -33,10 +30,13 @@ def test_recent_history_most_recent_first_without_duplicates(api, new_product):
 
 
 def test_recent_history_is_bounded(api, new_product):
-    for _ in range(RECENT_LIMIT + 2):
+    # El límite configurado lo informa la propia API (campo `limit`).
+    limit = api.get("/customers/c-007/recent").json()["limit"]
+    assert limit > 0
+    for _ in range(limit + 2):
         view(api, new_product()["id"], customer="c-007")
     recent = api.get("/customers/c-007/recent", params={"limit": 1000}).json()["product_ids"]
-    assert len(recent) == RECENT_LIMIT
+    assert len(recent) == limit
 
 
 def test_top_products_ranks_by_views(api, new_product):

@@ -5,8 +5,14 @@ from app.activity.ports import ActivityStore
 class ActivityService:
     """Delegación fina al `ActivityStore`. PROVISTO: el trabajo está en el adaptador `ActivityStoreAdapter`."""
 
-    def __init__(self, store: ActivityStore):
+    def __init__(self, store: ActivityStore, recent_limit: int = 10):
         self._store = store
+        self._recent_limit = recent_limit
+
+    @property
+    def recent_limit(self) -> int:
+        """Largo máximo configurado del historial reciente (RECENT_VIEWS_LIMIT)."""
+        return self._recent_limit
 
     def register_view(self, customer_id: str, product_id: str) -> None:
         self._store.register_view(customer_id, product_id)

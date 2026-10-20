@@ -59,7 +59,7 @@ GET {{baseUrl}}/products/{{productA}}/views
 
 # @name recent
 # Historial reciente del cliente.
-# OBSERVAR: product_ids empieza con ["nb-001","ms-002", ...]: mas reciente primero, sin duplicados, acotado (RECENT_VIEWS_LIMIT, 10 por defecto).
+# OBSERVAR: product_ids empieza con ["nb-001","ms-002", ...]: mas reciente primero, sin duplicados, acotado. "limit" = largo maximo configurado del historial (RECENT_VIEWS_LIMIT, 10 por defecto).
 GET {{baseUrl}}/customers/{{customerId}}/recent
 
 ###

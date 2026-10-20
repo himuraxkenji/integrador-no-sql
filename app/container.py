@@ -67,7 +67,7 @@ def build_container(settings: Settings) -> Container:
     return Container(
         catalog=CatalogService(products, cache, settings.cache_ttl_seconds),
         customers=CustomerService(customers),
-        activity=ActivityService(activity_store),
+        activity=ActivityService(activity_store, settings.recent_views_limit),
         orders=OrderService(orders, products, customers, purchase_relations),
         recommendations=RecommendationService(finder, products),
         faults=faults,

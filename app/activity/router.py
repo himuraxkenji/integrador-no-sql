@@ -28,4 +28,5 @@ def top_products(limit: int = 10, c: Container = Depends(get_container)):
 
 @router.get("/customers/{customer_id}/recent")
 def recent_products(customer_id: str, limit: int = 10, c: Container = Depends(get_container)):
-    return {"customer_id": customer_id, "product_ids": c.activity.recent(customer_id, limit)}
+    # `limit` en la respuesta = largo máximo configurado del historial (RECENT_VIEWS_LIMIT).
+    return {"customer_id": customer_id, "product_ids": c.activity.recent(customer_id, limit), "limit": c.activity.recent_limit}
