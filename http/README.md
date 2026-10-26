@@ -20,6 +20,8 @@ docker compose up --build -d   # API en http://localhost:8000
 make seed                      # dataset cargado
 ```
 
+Demo de caché: Compose arranca la API con `CACHE_MISS_DELAY_SECONDS=5`, o sea que un `X-Cache: MISS` tarda ~5 s a propósito (el HIT es instantáneo). Para desactivarlo: `CACHE_MISS_DELAY_SECONDS=0 docker compose up -d app`.
+
 Sin Docker: `ADAPTERS=fake uv run uvicorn app.main:app --reload`. Los TODO sin implementar responden **501**.
 
 ## Orden recomendado

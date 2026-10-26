@@ -1,5 +1,6 @@
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,4 +19,6 @@ class Settings(BaseSettings):
     neo4j_password: str = "nexus-dev-password"  # solo desarrollo local
 
     cache_ttl_seconds: int = 60
+    # Retardo artificial (s) de la lectura en la fuente cuando la caché no tiene el producto (MISS). 0 = sin retardo.
+    cache_miss_delay_seconds: float = Field(default=0, ge=0)
     recent_views_limit: int = 10

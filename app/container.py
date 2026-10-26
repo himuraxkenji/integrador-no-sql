@@ -11,6 +11,7 @@ from app.admin.faults import FaultState, FaultyPurchaseRelations
 from app.catalog.adapters.mongo_product_repository import MongoProductRepository
 from app.catalog.adapters.product_cache import ProductCacheAdapter
 from app.catalog.service import CatalogService
+from app.catalog.slow_reads import with_miss_delay
 from app.config import Settings
 from app.customers.adapters.mongo_customer_repository import MongoCustomerRepository
 from app.customers.service import CustomerService
@@ -65,7 +66,10 @@ def build_container(settings: Settings) -> Container:
         health, close = conns.ping, conns.close
 
     return Container(
-        catalog=CatalogService(products, cache, settings.cache_ttl_seconds),
+        # Solo el catálogo ve la fuente "lenta" (demo de caché); órdenes y recomendaciones leen `products` directo.
+        catalog=CatalogService(
+            with_miss_delay(products, settings.cache_miss_delay_seconds), cache, settings.cache_ttl_seconds
+        ),
         customers=CustomerService(customers),
         activity=ActivityService(activity_store, settings.recent_views_limit),
         orders=OrderService(orders, products, customers, purchase_relations),

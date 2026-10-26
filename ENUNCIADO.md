@@ -155,8 +155,10 @@ La cátedra entrega un repositorio base. Define con claridad qué viene resuelto
 | Datos | Dataset de ejemplo y script de seed (`python -m scripts.seed`), que carga datos mediante los puertos. |
 | Pruebas | Tests de aceptación de los siete escenarios (`tests/acceptance`) y tests unitarios de los flujos (`tests/unit`). |
 | Documentación | Plantillas. |
+| Demo de caché | Retardo configurable (`CACHE_MISS_DELAY_SECONDS`, 5 s en Compose) en la lectura de MongoDB cuando hay MISS, para que se vea la diferencia con el HIT. No requiere implementar nada. |
 | Interfaz de prueba | UI web en `/ui` (HTML + JS, sin build) y Swagger UI en `/docs` para probar la API y los escenarios. |
 | Clientes de base de datos | mongo-express, RedisInsight y Neo4j Browser (opcionales, perfil `clients` de Compose), más `make mongosh`, `make redis-cli` y `make cypher-shell`. |
+<!-- REVISAR (cátedra): retardo de MISS (CACHE_MISS_DELAY_SECONDS) agregado a la lista de lo provisto, a pedido del docente -->
 <!-- REVISAR (cátedra): interfaz de prueba (/ui) y Swagger (/docs) agregados a la lista de lo provisto -->
 <!-- REVISAR (cátedra): clientes de base de datos (mongo-express, RedisInsight, consolas) agregados a la lista de lo provisto -->
 

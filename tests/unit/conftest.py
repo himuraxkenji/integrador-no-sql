@@ -21,6 +21,12 @@ from app.recommendations.service import RecommendationService
 TTL = 30
 
 
+@pytest.fixture(autouse=True)
+def _no_miss_delay(monkeypatch):
+    """Los tests no esperan: aunque el entorno o un `.env` definan CACHE_MISS_DELAY_SECONDS, acá vale 0."""
+    monkeypatch.setenv("CACHE_MISS_DELAY_SECONDS", "0")
+
+
 @pytest.fixture
 def world():
     """Un 'mundo' mínimo: 3 productos, 3 clientes y todos los servicios."""

@@ -24,6 +24,17 @@ ADAPTERS=fake uv run uvicorn app.main:app --reload   # API con fakes y dataset y
 uv run pytest tests/unit                              # arrancan en rojo hasta que implementen los servicios
 ```
 
+### Configuración (variables de entorno)
+
+| Variable | Default | Qué hace |
+|----------|---------|----------|
+| `ADAPTERS` | `real` | `real` = MongoDB + Redis + Neo4j; `fake` = todo en memoria |
+| `CACHE_TTL_SECONDS` | `60` | Vencimiento de las entradas de caché de productos |
+| `RECENT_VIEWS_LIMIT` | `10` | Largo del historial de vistas por cliente |
+| `CACHE_MISS_DELAY_SECONDS` | `0` en la app, `5` en Compose | Retardo artificial (s) de la lectura en MongoDB cuando hay **MISS** en `GET /products/{id}`, para mostrar la diferencia con el HIT. `0` lo desactiva |
+
+El retardo lo pone la cátedra (`app/catalog/slow_reads.py`, cableado en `app/container.py`): ustedes no tienen que implementar nada. Solo afecta la lectura por id del cache-aside; escrituras, búsquedas, órdenes y recomendaciones no se demoran. Con Docker, para cambiarlo: `CACHE_MISS_DELAY_SECONDS=2 docker compose up -d app`. `make test-acceptance` reinicia la API de Docker con el retardo en `0` mientras corren los tests (para que no esperen 5 s por cada MISS) y al terminar la deja como estaba.
+
 Mientras algo no esté implementado, la API responde **501** con el mensaje `TODO(alumnos): ...` que dice qué falta.
 
 Colección de llamadas HTTP para probar la API y los escenarios: [http/README.md](http/README.md).

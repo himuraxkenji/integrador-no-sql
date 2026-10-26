@@ -43,7 +43,7 @@ Content-Type: application/json
 
 # @name getProduct
 # Lee un producto del dataset.
-# OBSERVAR: 200 y header X-Cache (MISS la primera vez, HIT despues).
+# OBSERVAR: 200 y header X-Cache (MISS la primera vez, HIT despues). El MISS tarda ~CACHE_MISS_DELAY_SECONDS (5 s en Compose) a proposito.
 GET {{baseUrl}}/products/{{productId}}
 
 ###

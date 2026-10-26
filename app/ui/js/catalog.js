@@ -91,6 +91,7 @@ async function consult(id, hint) {
         h("div", {}, h("div", {}, `X-Cache: ${res.cache || "(sin header)"}`), h("div", { class: "muted" }, `${res.ms} ms`)),
         h("button", { class: "secondary", onClick: () => consult(id, "Consulta repetida") }, "Volver a consultar"),
       ),
+      ...(res.cache === "MISS" ? [h("div", { class: "muted" }, "El MISS puede tardar unos segundos a propósito: la API simula una fuente lenta (CACHE_MISS_DELAY_SECONDS, 5 s en Compose). El HIT es instantáneo.")] : []),
       ...(hint ? [h("div", { class: "box info" }, hint)] : []),
       h("h3", {}, "Atributos"),
       attrChips(p.attributes),
