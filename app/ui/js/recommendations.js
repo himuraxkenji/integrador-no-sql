@@ -1,6 +1,6 @@
 import { call } from "./api.js";
 import { customers, loadCustomers, loadProducts, productName } from "./data.js";
-import { h, field, fillSelect, fmtPrice, guard, table, badge } from "./util.js";
+import { h, field, fillSelect, fmtPrice, guard, table, badge, busy } from "./util.js";
 
 const errSlot = h("div");
 const customerSel = h("select");
@@ -11,7 +11,7 @@ export function init(root) {
   customerSel.addEventListener("change", refresh);
   root.append(
     errSlot,
-    h("section", { class: "card" }, h("h2", {}, "Recomendaciones"), h("div", { class: "form-grid" }, field("Cliente", customerSel), field("Cantidad", limit), h("div", { class: "actions" }, h("button", { onClick: refresh }, "Actualizar")))),
+    h("section", { class: "card" }, h("h2", {}, "Recomendaciones"), h("div", { class: "form-grid" }, field("Cliente", customerSel), field("Cantidad", limit), h("div", { class: "actions" }, h("button", { onClick: busy(refresh) }, "Actualizar")))),
     out,
   );
 }

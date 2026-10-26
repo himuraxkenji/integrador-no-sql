@@ -1,5 +1,5 @@
-import { request, ApiError } from "./api.js";
-import { h, badge } from "./util.js";
+import { request, ApiError, onBusy } from "./api.js";
+import { h, badge, busy, spinner, LOADING_DELAY } from "./util.js";
 import * as catalog from "./catalog.js";
 import * as activity from "./activity.js";
 import * as orders from "./orders.js";
@@ -31,8 +31,22 @@ const main = h("main");
 const logRoot = h("div");
 const sections = new Map();
 
+// Barra de actividad global: aparece si hay requests en vuelo por más de LOADING_DELAY.
+const activityBar = h("div", { class: "activity-bar", "aria-hidden": "true" });
+let barTimer = null;
+onBusy((n) => {
+  if (n > 0) {
+    barTimer ??= setTimeout(() => activityBar.classList.add("on"), LOADING_DELAY);
+  } else {
+    clearTimeout(barTimer);
+    barTimer = null;
+    activityBar.classList.remove("on");
+  }
+});
+
 async function refreshHealth() {
-  badges.replaceChildren(badge("consultando...", "gray"));
+  badges.setAttribute("aria-busy", "true");
+  badges.replaceChildren(h("span", { class: "badge gray", role: "status" }, spinner(), " consultando..."));
   try {
     const res = await request("GET", "/health");
     const data = res.data || {};
@@ -42,6 +56,8 @@ async function refreshHealth() {
     }));
   } catch (err) {
     badges.replaceChildren(badge(err instanceof ApiError ? "API no disponible" : "error", "red"));
+  } finally {
+    badges.removeAttribute("aria-busy");
   }
 }
 
@@ -57,7 +73,8 @@ function select(id) {
 }
 
 root.append(
-  h("header", {}, h("h1", {}, "NEXUS ", h("small", {}, "interfaz de prueba")), badges, h("button", { class: "secondary", onClick: refreshHealth }, "Actualizar estado")),
+  activityBar,
+  h("header", {}, h("h1", {}, "NEXUS ", h("small", {}, "interfaz de prueba")), badges, h("button", { class: "secondary", onClick: busy(refreshHealth) }, "Actualizar estado")),
   nav,
   main,
   logRoot,

@@ -1,6 +1,6 @@
 // Escenarios 01-07: replican los pasos y aserciones de tests/acceptance/test_0N_*.py.
 import { request, ApiError, ensure } from "./api.js";
-import { h, badge } from "./util.js";
+import { h, badge, setBusy, spinner } from "./util.js";
 
 const CUSTOMER = "c-008";
 
@@ -8,9 +8,10 @@ const show = (v) => (typeof v === "string" ? v : JSON.stringify(v));
 const ids = (recs) => recs.map((r) => r.product.id);
 
 class Ctx {
-  constructor(onStep) {
+  constructor(onStep, onWait) {
     this.steps = [];
     this.onStep = onStep;
+    this.onWait = onWait;
     this.stamp = Date.now();
     this.n = 0;
   }
@@ -24,6 +25,7 @@ class Ctx {
   }
   /** Llamada cruda; un 501 aborta el escenario como "pendiente". */
   async req(method, path, opts) {
+    this.onWait(`${method} ${path}`);
     const res = await request(method, path, opts);
     if (res.status === 501) ensure(res);
     return res;
@@ -257,8 +259,8 @@ export const SCENARIOS = [
 ];
 
 /** Corre un escenario y devuelve { state: ok|fail|pending, steps }. */
-export async function runScenario(def, onStep = () => {}) {
-  const c = new Ctx(onStep);
+export async function runScenario(def, onStep = () => {}, onWait = () => {}) {
+  const c = new Ctx(onStep, onWait);
   let state = "ok";
   try {
     await def.run(c);
@@ -283,16 +285,24 @@ export function init(root) {
   const cards = new Map();
   const results = new Map();
 
-  const render = (def, steps, state) => {
+  // state === null: el escenario está corriendo; `waiting` es la request en curso (paso en progreso).
+  const render = (def, steps, state, waiting) => {
     const card = cards.get(def.id);
-    card.status.replaceChildren(state ? badge(STATE_TEXT[state], MARK[state][1]) : "");
+    card.status.replaceChildren(state ? badge(STATE_TEXT[state], MARK[state][1]) : h("span", { class: "badge gray", role: "status" }, spinner(), " ejecutando..."));
+    if (state) card.body.removeAttribute("aria-busy");
+    else card.body.setAttribute("aria-busy", "true");
     card.body.replaceChildren(
-      steps.length
+      steps.length || waiting
         ? h(
             "table",
             { class: "steps" },
             h("thead", {}, h("tr", {}, ["Paso", "Esperado", "Obtenido", ""].map((t) => h("th", {}, t)))),
-            h("tbody", {}, steps.map((s) => h("tr", { class: s.state }, h("td", {}, s.desc), h("td", {}, s.expected), h("td", {}, s.obtained), h("td", { class: `mark ${MARK[s.state][1]}` }, MARK[s.state][0])))),
+            h(
+              "tbody",
+              {},
+              steps.map((s) => h("tr", { class: s.state }, h("td", {}, s.desc), h("td", {}, s.expected), h("td", {}, s.obtained), h("td", { class: `mark ${MARK[s.state][1]}` }, MARK[s.state][0]))),
+              waiting ? h("tr", { class: "running" }, h("td", { colspan: "3" }, h("span", { class: "loading" }, spinner(), h("span", {}, `En curso: ${waiting}`))), h("td", { class: "mark" }, "…")) : null,
+            ),
           )
         : "",
     );
@@ -300,21 +310,28 @@ export function init(root) {
 
   const runOne = async (def) => {
     const card = cards.get(def.id);
-    card.button.disabled = true;
-    card.status.replaceChildren(badge("ejecutando...", "gray"));
+    setBusy(card.button, true);
     const steps = [];
-    const res = await runScenario(def, (s) => {
-      steps.push(s);
-      render(def, steps, null);
-    });
-    render(def, res.steps, res.state);
-    results.set(def.id, res.state);
-    card.button.disabled = false;
-    return res.state;
+    render(def, steps, null);
+    try {
+      const res = await runScenario(
+        def,
+        (s) => {
+          steps.push(s);
+          render(def, steps, null);
+        },
+        (waiting) => render(def, steps, null, waiting),
+      );
+      render(def, res.steps, res.state);
+      results.set(def.id, res.state);
+      return res.state;
+    } finally {
+      setBusy(card.button, false);
+    }
   };
 
   const all = async () => {
-    runAll.disabled = true;
+    setBusy(runAll, true);
     summary.className = "box info";
     summary.textContent = "Ejecutando...";
     for (const def of SCENARIOS) await runOne(def);
@@ -322,7 +339,7 @@ export function init(root) {
     const n = (s) => states.filter((x) => x === s).length;
     summary.className = `box ${n("fail") ? "error" : n("pending") ? "warn" : "ok"}`;
     summary.textContent = `Resumen: ${n("ok")} OK, ${n("fail")} fallaron, ${n("pending")} pendientes (de ${SCENARIOS.length}).`;
-    runAll.disabled = false;
+    setBusy(runAll, false);
     summary.dataset.done = "1";
   };
 

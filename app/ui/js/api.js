@@ -11,6 +11,20 @@ export function onLog(fn) {
   return () => listeners.delete(fn);
 }
 
+// Requests en vuelo: lo consume el indicador global de actividad (main.js).
+let inflight = 0;
+const busyListeners = new Set();
+
+export function onBusy(fn) {
+  busyListeners.add(fn);
+  return () => busyListeners.delete(fn);
+}
+
+function track(delta) {
+  inflight += delta;
+  for (const fn of busyListeners) fn(inflight);
+}
+
 function notify(event) {
   for (const fn of listeners) fn(event);
 }
@@ -57,7 +71,12 @@ function record(entry) {
 }
 
 /** Llamada "cruda": devuelve la respuesta aunque sea 4xx/5xx. Solo lanza ante error de red. */
-export async function request(method, path, { query, body } = {}) {
+export function request(method, path, opts) {
+  track(1);
+  return send(method, path, opts).finally(() => track(-1));
+}
+
+async function send(method, path, { query, body } = {}) {
   const url = buildUrl(path, query);
   const init = { method, headers: {} };
   if (body !== undefined) {

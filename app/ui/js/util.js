@@ -42,15 +42,83 @@ export function errorBox(err) {
   return h("div", { class: "box error", role: "alert" }, h("strong", {}, "Error"), h("div", {}, err?.message || String(err)));
 }
 
-/** Ejecuta fn y, si falla, muestra el error dentro de `slot`. Devuelve undefined ante error. */
-export async function guard(slot, fn) {
+// Debajo de este umbral (ms) no se muestra ningún indicador: las respuestas instantáneas no parpadean.
+export const LOADING_DELAY = 150;
+
+export const spinner = () => h("span", { class: "spinner", "aria-hidden": "true" });
+
+/** Bloque "Cargando..." (spinner + texto) para mostrar mientras se espera una respuesta. */
+export function loadingBox(text = "Cargando…") {
+  return h("div", { class: "loading", role: "status", "aria-live": "polite" }, spinner(), h("span", {}, text));
+}
+
+/** Pasado el umbral muestra `text` con spinner dentro de `slot` (aria-busy). Devuelve la función que lo quita. */
+function showLoading(slot, text) {
+  let box = null;
+  const timer = setTimeout(() => {
+    box = loadingBox(text);
+    slot.append(box);
+    slot.setAttribute("aria-busy", "true");
+  }, LOADING_DELAY);
+  return () => {
+    clearTimeout(timer);
+    box?.remove();
+    // Varios guard pueden compartir slot: aria-busy se mantiene mientras quede algún loading.
+    if (!slot.querySelector(":scope > .loading")) slot.removeAttribute("aria-busy");
+  };
+}
+
+/** Ejecuta fn y, si falla, muestra el error dentro de `slot`. Devuelve undefined ante error. Si tarda, muestra `text` con spinner. */
+export async function guard(slot, fn, text) {
   slot.replaceChildren();
+  const stop = showLoading(slot, text);
   try {
     return await fn();
   } catch (err) {
     slot.replaceChildren(errorBox(err));
     return undefined;
+  } finally {
+    stop();
   }
+}
+
+const running = new WeakSet();
+
+/** Marca (o desmarca) un botón como ocupado: deshabilitado y con spinner. */
+export function setBusy(button, on) {
+  button.disabled = on;
+  button.classList.toggle("busy", on);
+  if (on) button.setAttribute("aria-busy", "true");
+  else button.removeAttribute("aria-busy");
+}
+
+/**
+ * Envuelve un handler de botón/formulario: mientras corre ignora nuevos clics (evita el doble submit)
+ * y, si tarda más que LOADING_DELAY, deja el botón deshabilitado con spinner.
+ */
+export function busy(fn) {
+  return async (e) => {
+    const button = e?.submitter || e?.currentTarget; // se lee antes del primer await
+    if (!button) return fn(e);
+    if (running.has(button)) {
+      e.preventDefault?.();
+      return undefined;
+    }
+    running.add(button);
+    let marked = false;
+    const timer = setTimeout(() => {
+      if (button.disabled) return;
+      setBusy(button, true);
+      marked = true;
+    }, LOADING_DELAY);
+    try {
+      return await fn(e);
+    } finally {
+      clearTimeout(timer);
+      running.delete(button);
+      if (marked) setBusy(button, false);
+    }
+  };
 }
 
 export function fillSelect(select, items, value, label, placeholder) {

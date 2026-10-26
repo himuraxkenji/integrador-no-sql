@@ -1,6 +1,6 @@
 import { call, request, ensure } from "./api.js";
 import { loadProducts, products } from "./data.js";
-import { h, field, fillSelect, fmtPrice, guard, json, badge, table } from "./util.js";
+import { h, field, fillSelect, fmtPrice, guard, json, badge, table, busy } from "./util.js";
 
 const errSlot = h("div");
 const category = h("select", { name: "category" });
@@ -22,7 +22,7 @@ let currentId = null;
 export function init(root) {
   const form = h(
     "form",
-    { class: "form-grid", onSubmit: (e) => { e.preventDefault(); search(); } },
+    { class: "form-grid", onSubmit: busy((e) => { e.preventDefault(); return search(); }) },
     field("Categoría", category),
     field("Precio mínimo", minPrice),
     field("Precio máximo", maxPrice),
@@ -71,7 +71,7 @@ async function search() {
       cells: [p.id, p.name, p.category, fmtPrice(p.price), p.stock, attrChips(p.attributes)],
     }));
     results.replaceChildren(h("p", { class: "muted" }, `${list.length} producto(s)`), table(["Id", "Nombre", "Categoría", "Precio", "Stock", "Atributos"], rows, "catalog"));
-  });
+  }, "Buscando productos…");
 }
 
 async function consult(id, hint) {
@@ -89,7 +89,7 @@ async function consult(id, hint) {
         { class: "cache-line" },
         h("span", { class: `cache-badge ${kind}` }, res.cache || "?"),
         h("div", {}, h("div", {}, `X-Cache: ${res.cache || "(sin header)"}`), h("div", { class: "muted" }, `${res.ms} ms`)),
-        h("button", { class: "secondary", onClick: () => consult(id, "Consulta repetida") }, "Volver a consultar"),
+        h("button", { class: "secondary", onClick: busy(() => consult(id, "Consulta repetida")) }, "Volver a consultar"),
       ),
       ...(res.cache === "MISS" ? [h("div", { class: "muted" }, "El MISS puede tardar unos segundos a propósito: la API simula una fuente lenta (CACHE_MISS_DELAY_SECONDS, 5 s en Compose). El HIT es instantáneo.")] : []),
       ...(hint ? [h("div", { class: "box info" }, hint)] : []),
@@ -98,7 +98,7 @@ async function consult(id, hint) {
       h("pre", {}, json(p)),
       editForm(p),
     );
-  });
+  }, "Consultando… (un MISS puede tardar unos segundos)");
   search();
 }
 
@@ -121,7 +121,7 @@ function editForm(p) {
       await call("PUT", `/products/${encodeURIComponent(p.id)}`, { body });
       await loadProducts();
       await consult(p.id, "Producto actualizado. Mirá el badge: la caché se invalidó, por eso debería ser MISS. Tocá \"Volver a consultar\" y debería pasar a HIT.");
-    });
+    }, "Guardando…");
   };
   const remove = async () => {
     if (!confirm(`¿Eliminar (borrado lógico) ${p.id}?`)) return;
@@ -131,13 +131,13 @@ function editForm(p) {
       detail.replaceChildren(h("div", { class: "box info" }, `${p.id} eliminado (lógico). Volver a consultarlo debería dar 404.`), h("button", { class: "secondary", onClick: () => consult(p.id) }, "Consultar igual"));
       await loadProducts();
       search();
-    });
+    }, "Eliminando…");
   };
   return h(
     "div",
     {},
     h("h3", {}, "Editar"),
-    h("form", { class: "form-grid", onSubmit: save }, field("Nombre", name), field("Precio", price), field("Stock", stock), h("div", { class: "actions" }, h("button", { type: "submit" }, "Guardar (PUT)"), h("button", { type: "button", class: "danger", onClick: remove }, "Eliminar (lógico)"))),
+    h("form", { class: "form-grid", onSubmit: busy(save) }, field("Nombre", name), field("Precio", price), field("Stock", stock), h("div", { class: "actions" }, h("button", { type: "submit" }, "Guardar (PUT)"), h("button", { type: "button", class: "danger", onClick: busy(remove) }, "Eliminar (lógico)"))),
     slot,
   );
 }

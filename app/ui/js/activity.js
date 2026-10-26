@@ -1,6 +1,6 @@
 import { call } from "./api.js";
 import { customers, products, loadCustomers, loadProducts, productName } from "./data.js";
-import { h, field, fillSelect, guard, table } from "./util.js";
+import { h, field, fillSelect, guard, table, busy } from "./util.js";
 
 const errSlot = h("div");
 const customerSel = h("select");
@@ -16,7 +16,7 @@ export function init(root) {
       "section",
       { class: "card" },
       h("h2", {}, "Registrar vista"),
-      h("div", { class: "form-grid" }, field("Cliente", customerSel), field("Producto", productSel), h("div", { class: "actions" }, h("button", { onClick: registerView }, "Registrar vista"))),
+      h("div", { class: "form-grid" }, field("Cliente", customerSel), field("Producto", productSel), h("div", { class: "actions" }, h("button", { onClick: busy(registerView) }, "Registrar vista"))),
     ),
     panel,
   );

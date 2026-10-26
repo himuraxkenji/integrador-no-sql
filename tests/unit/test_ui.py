@@ -56,3 +56,13 @@ def test_js_modules_imported_by_main_are_served(client):
 def test_ui_routes_are_not_in_openapi(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert not [p for p in paths if p == "/" or p.startswith("/ui")]
+
+
+def test_ui_has_loading_feedback_respecting_reduced_motion(client):
+    css = client.get("/ui/styles.css").text
+    assert "@keyframes spin" in css and ".activity-bar" in css
+    assert "prefers-reduced-motion: reduce" in css
+    api = client.get("/ui/js/api.js").text
+    assert "export function onBusy" in api
+    util = client.get("/ui/js/util.js").text
+    assert "aria-busy" in util and 'role: "status"' in util

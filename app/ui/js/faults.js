@@ -1,5 +1,5 @@
 import { call } from "./api.js";
-import { h, guard, badge, table, syncBadge, fmtPrice, json } from "./util.js";
+import { h, guard, badge, table, syncBadge, fmtPrice, json, busy } from "./util.js";
 
 const errSlot = h("div");
 const faultBox = h("div");
@@ -17,7 +17,7 @@ export function init(root) {
         "section",
         { class: "card" },
         h("h2", {}, "Sincronización de órdenes"),
-        h("div", { class: "actions" }, h("button", { class: "secondary", onClick: loadSync }, "Actualizar"), h("button", { onClick: reconcile }, "Reconciliar")),
+        h("div", { class: "actions" }, h("button", { class: "secondary", onClick: busy(loadSync) }, "Actualizar"), h("button", { onClick: busy(reconcile) }, "Reconciliar")),
         reportBox,
         syncBox,
       ),
@@ -36,7 +36,7 @@ async function loadFaults() {
   const f = (await call("GET", "/admin/faults")).data;
   faultBox.replaceChildren(
     h("div", { class: "cache-line" }, f.relations_down ? badge("relations_down: ACTIVA", "red") : badge("relations_down: apagada", "green")),
-    h("div", { class: "actions" }, h("button", { class: f.relations_down ? "" : "danger", onClick: () => toggle(!f.relations_down) }, f.relations_down ? "Apagar falla" : "Encender falla")),
+    h("div", { class: "actions" }, h("button", { class: f.relations_down ? "" : "danger", onClick: busy(() => toggle(!f.relations_down)) }, f.relations_down ? "Apagar falla" : "Encender falla")),
   );
 }
 
@@ -44,7 +44,7 @@ async function toggle(value) {
   await guard(errSlot, async () => {
     await call("POST", "/admin/faults", { body: { relations_down: value } });
     await loadFaults();
-  });
+  }, "Cambiando la falla…");
 }
 
 async function loadSync() {
@@ -64,5 +64,5 @@ async function reconcile() {
     const r = (await call("POST", "/admin/reconcile")).data;
     reportBox.replaceChildren(h("div", { class: "box info" }, h("strong", {}, `Revisadas ${r.checked}, sincronizadas ${r.synced}, siguen fallando ${r.still_failed}`), h("pre", {}, json(r))));
     await loadSync();
-  });
+  }, "Reconciliando…");
 }

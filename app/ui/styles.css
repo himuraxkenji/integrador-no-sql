@@ -118,6 +118,44 @@ button.secondary { background: var(--surface); color: var(--text); border-color:
 button.danger { background: var(--red-bg); color: var(--red); border-color: var(--red); }
 button.small { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
 button:disabled { opacity: 0.5; cursor: progress; }
+/* Loading: spinner solo con CSS. Colores de las variables, sirve en claro y oscuro. */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.spinner, button.busy::before {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -0.15em;
+  animation: spin 0.7s linear infinite;
+}
+.spinner { color: var(--primary); }
+button.busy::before { content: ""; width: 0.9em; height: 0.9em; margin-right: 0.45em; vertical-align: -0.1em; }
+.loading { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; color: var(--muted); }
+span.loading { display: inline-flex; padding: 0; }
+.activity-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 20;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.activity-bar.on { opacity: 1; }
+.activity-bar.on::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 35%; background: var(--primary); animation: slide 1.1s ease-in-out infinite; }
+/* Sin movimiento: el spinner queda como anillo estático con un pulso mínimo y la barra como línea fija. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner, button.busy::before { animation: pulse 1.6s ease-in-out infinite; }
+  .activity-bar.on::before { width: 100%; animation: pulse 1.6s ease-in-out infinite; }
+}
 :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .muted { color: var(--muted); }
 .table-wrap { overflow-x: auto; }
@@ -168,6 +206,7 @@ pre {
 .order ul { margin: 0.25rem 0 0; padding-left: 1.25rem; }
 table.steps tr.fail td { background: var(--red-bg); }
 table.steps tr.pending td { background: var(--yellow-bg); }
+table.steps tr.running td { background: var(--code-bg); }
 table.steps td.mark { font-weight: 800; font-size: 1.1rem; text-align: center; }
 td.mark.green { color: var(--green); }
 td.mark.red { color: var(--red); }

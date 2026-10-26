@@ -1,6 +1,6 @@
 import { call } from "./api.js";
 import { customers, products, loadCustomers, loadProducts, productName } from "./data.js";
-import { h, field, fillSelect, fmtPrice, guard, syncBadge, table } from "./util.js";
+import { h, field, fillSelect, fmtPrice, guard, syncBadge, table, busy } from "./util.js";
 
 const errSlot = h("div");
 const customerSel = h("select");
@@ -25,7 +25,7 @@ export function init(root) {
         field("Cliente", customerSel),
         h("div", { class: "form-grid" }, field("Producto", productSel), field("Cantidad", qty), h("div", { class: "actions" }, h("button", { class: "secondary", onClick: addItem }, "Agregar al carrito"))),
         cartBox,
-        h("div", { class: "actions" }, h("button", { onClick: buy }, "Comprar")),
+        h("div", { class: "actions" }, h("button", { onClick: busy(buy) }, "Comprar")),
         resultBox,
       ),
       h("section", { class: "card" }, h("h2", {}, "Órdenes del cliente"), listBox),
@@ -74,7 +74,7 @@ async function buy() {
     renderCart();
     resultBox.replaceChildren(orderCard(res.data, "Orden creada"));
     await loadOrders();
-  });
+  }, "Creando la orden…");
 }
 
 function orderCard(o, title) {
@@ -92,5 +92,5 @@ async function loadOrders() {
   await guard(listBox, async () => {
     const list = (await call("GET", `/customers/${encodeURIComponent(customerSel.value)}/orders`)).data;
     listBox.replaceChildren(...(list.length ? list.map((o) => orderCard(o, "Orden")) : [h("p", { class: "muted" }, "Este cliente no tiene órdenes.")]));
-  });
+  }, "Cargando órdenes…");
 }
