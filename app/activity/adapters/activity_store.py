@@ -3,6 +3,7 @@
 from app.activity.domain import ProductViews
 from app.activity.ports import ActivityStore
 from app.infrastructure.connections import Connections
+from app.infrastructure.redis_utils import as_int, pairs, redis_cmd, redis_tx  # noqa: F401  (kit de la cátedra)
 
 
 class ActivityStoreAdapter(ActivityStore):
@@ -18,6 +19,13 @@ class ActivityStoreAdapter(ActivityStore):
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`, `connections.neo4j`).
     Si eligen Redis: `connections.redis` solo acepta comandos literales vía
     `execute_command(...)` / `pipeline()` (no métodos de conveniencia de redis-py).
+
+    Kit de la cátedra (`app/infrastructure/redis_utils.py`), plomería lista para usar. Ejemplos con otro dominio:
+        redis_cmd(self._conns, "INCR", "biblioteca:visitas")                       # un comando literal
+        redis_tx(self._conns, [["INCR", "biblioteca:visitas"], ["SADD", "biblioteca:socios", "soc-007"]])  # MULTI/EXEC
+        pairs(redis_cmd(self._conns, "ZRANGE", clave, 0, 4, "REV", "WITHSCORES"))  # [(miembro, puntaje)]
+        as_int(redis_cmd(self._conns, "HGET", "biblioteca:socio:soc-007", "prestamos"))  # nil -> 0
+    Si eligen otro motor: `cypher_write` / `cypher_read` (`neo4j_utils.py`) o pymongo + `mongo_utils.py`.
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para cada una de las
     tres necesidades, el patrón de acceso y la alternativa descartada.

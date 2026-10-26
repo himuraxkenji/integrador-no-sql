@@ -214,3 +214,17 @@ def test_raw_redis_client_only_touched_in_connections():
         "Usen connections.redis.execute_command('COMANDO', ...) (ver docs/guia-consultas.md). "
         "No accedan al cliente interno: " + ", ".join(violations)
     )
+
+
+def test_kit_is_transport_not_a_query_builder():
+    """El kit de la cátedra no expone métodos de conveniencia de redis-py ni constructores de consultas."""
+    from app.infrastructure import mongo_utils, neo4j_utils, redis_utils
+
+    redis_py_convenience = {"get", "set", "zincrby", "zrange", "zscore", "lrange", "lpush", "ltrim", "hset", "incr", "delete"}
+    for module in (mongo_utils, neo4j_utils, redis_utils):
+        public = {name.lower() for name in vars(module) if not name.startswith("_")}
+        assert not public & redis_py_convenience, f"{module.__name__} expone {public & redis_py_convenience}"
+        assert not any("builder" in name or name.startswith("zincr") for name in public)
+    # Las funciones del kit reciben la consulta/comando ya escrito: no la construyen.
+    assert redis_utils.redis_cmd.__code__.co_varnames[:2] == ("source", "args")
+    assert neo4j_utils.cypher_write.__code__.co_varnames[:2] == ("source", "query")

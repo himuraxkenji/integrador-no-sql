@@ -1,6 +1,7 @@
 """Usen el lenguaje nativo del motor mediante el driver oficial (ver docs/guia-consultas.md). No se admiten ORM/ODM/OGM."""
 
 from app.infrastructure.connections import Connections
+from app.infrastructure.neo4j_utils import cypher_read  # noqa: F401  (kit de la cátedra)
 from app.recommendations.domain import Candidate
 from app.recommendations.ports import RecommendationFinder
 
@@ -13,6 +14,12 @@ class RecommendationFinderAdapter(RecommendationFinder):
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`, `connections.neo4j`).
     Si eligen Redis: `connections.redis` solo acepta comandos literales vía
     `execute_command(...)` / `pipeline()` (no métodos de conveniencia de redis-py).
+
+    Kit de la cátedra, plomería lista para usar. La consulta la escriben ustedes. Ejemplos con otro dominio:
+      - Neo4j: `cypher_read(self._conns, "MATCH (l:Libro) RETURN l.id AS id LIMIT $n", n=3)` -> `list[dict]`
+        (`cypher_read_one` devuelve la primera fila o `None`). Usa una transacción de lectura administrada.
+      - Redis: `pairs(redis_cmd(self._conns, "ZRANGE", clave, 0, 4, "REV", "WITHSCORES"))` -> `[(miembro, puntaje)]`
+        (`redis_utils.py`). MongoDB: `aggregate` de pymongo + `from_documents` (`mongo_utils.py`).
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para recomendar,
     cómo expresan la consulta y por qué descartaron las otras opciones.

@@ -4,11 +4,14 @@ from pymongo.database import Database
 
 from app.customers.domain import Customer
 from app.customers.ports import CustomerRepository
-from app.infrastructure.mongo_utils import from_document, to_document
+from app.infrastructure.mongo_utils import from_document, from_documents, to_document  # noqa: F401
 
 
 class MongoCustomerRepository(CustomerRepository):
-    """Clientes en MongoDB. Colección sugerida: `customers`. Misma convención `id` <-> `_id`."""
+    """Clientes en MongoDB. Colección sugerida: `customers`. Misma convención `id` <-> `_id`.
+
+    Kit de la cátedra: `to_document`, `from_document` y `from_documents(Modelo, cursor)` -> `list[Modelo]`.
+    """
 
     def __init__(self, db: Database):
         self._col = db["customers"]

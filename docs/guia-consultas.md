@@ -17,12 +17,15 @@ Esta guía muestra **sintaxis** y cómo cada comando de consola se traduce al **
 
 Se verifica con `uv run pytest tests/test_no_orm.py` (imports, dependencias prohibidas y cliente Redis restringido) y en la defensa oral (evidencia de `explain()` / `PROFILE` en `docs/decisions.md`).
 
+La cátedra provee un **kit de plomería** (sección 5) para que no escriban código repetitivo del driver (abrir sesiones, armar el `MULTI`/`EXEC`, normalizar respuestas). Los helpers solo **transportan**: la consulta la escriben ustedes.
+
 ## Índice
 
 1. [MongoDB](#1-mongodb-mongosh-vs-pymongo)
 2. [Redis](#2-redis-redis-cli-vs-execute_command)
 3. [Neo4j](#3-neo4j-cypher-shell-vs-driver-neo4j)
 4. [Esto NO](#4-esto-no)
+5. [Kit de la cátedra (plomería del driver)](#5-kit-de-la-cátedra-plomería-del-driver)
 
 Conexiones usadas en los ejemplos (en el repo las provee `Connections`):
 
@@ -683,3 +686,78 @@ libros = [from_document(Libro, d) for d in docs]     # Libro es un modelo de dom
 ```
 
 `tests/test_no_orm.py` falla si se importa o declara alguna de estas librerías.
+
+---
+
+## 5. Kit de la cátedra (plomería del driver)
+
+Los helpers de `app/infrastructure/` (`mongo_utils.py`, `redis_utils.py`, `neo4j_utils.py`) resuelven el **transporte**: abrir la sesión o la transacción, enviar, cerrar, convertir tipos. **No construyen consultas**: el MQL, los comandos de Redis y el Cypher los escriben ustedes tal cual aparecen en las secciones 1 a 3. No hay un motor recomendado: el kit sirve igual para los tres. Los ejemplos usan el dominio de la guía (biblioteca).
+
+El primer argumento de los helpers de Redis y Neo4j es el objeto `Connections` completo (o `connections.redis` / `connections.neo4j`). En los ejemplos se llama `conns`.
+
+### 5.1 MongoDB (`mongo_utils.py`)
+
+| Helper | Qué hace |
+|--------|----------|
+| `to_document(modelo)` | Modelo pydantic -> documento (`id` pasa a `_id`). |
+| `from_document(Modelo, doc)` | Documento -> modelo (`_id` pasa a `id`). |
+| `from_documents(Modelo, cursor)` | Igual, para un cursor o una lista: devuelve `list[Modelo]`. |
+| `ensure_indexes(col, [IndexModel, ...])` | `create_indexes` una sola vez por cliente y colección; se puede llamar en cada operación. |
+
+```python
+from pymongo import IndexModel
+from app.infrastructure.mongo_utils import ensure_indexes, from_document, from_documents, to_document
+
+libros = db["libros"]
+ensure_indexes(libros, [IndexModel([("activo", 1), ("anio", -1)], name="activo_anio")])
+
+libros.insert_one(to_document(libro))
+libro = from_document(Libro, libros.find_one({"_id": "lib-001"}))      # find_one puede dar None: chequéenlo antes
+lista = from_documents(Libro, libros.find({"activo": True, "anio": {"$gte": 1950}}).sort("anio", -1))
+```
+
+### 5.2 Redis (`redis_utils.py`)
+
+| Helper | Qué hace |
+|--------|----------|
+| `redis_cmd(conns, "COMANDO", *args)` | Un comando literal (`execute_command`). Devuelve la respuesta cruda. |
+| `redis_tx(conns, [[cmd, *args], ...])` | Los comandos en una transacción `MULTI`/`EXEC`: todos o ninguno. Devuelve una respuesta por comando, en orden. |
+| `redis_pipeline(conns, [[cmd, *args], ...])` | Igual, pero **sin** `MULTI`/`EXEC`: ahorra viajes de red, no da atomicidad. |
+| `pairs(respuesta)` | Respuesta de `... WITHSCORES` -> `[(miembro, puntaje_float)]`, venga plana o en pares (ver 2.4). |
+| `as_int(respuesta, default=0)` | `None` (`nil`) -> `default`; `"3"`, `3` o `3.0` -> `3`. |
+
+```python
+from app.infrastructure.redis_utils import as_int, pairs, redis_cmd, redis_tx
+
+clave = "biblioteca:socio:soc-007:ultimos"
+redis_cmd(conns, "SET", "biblioteca:libro:lib-001", "...", "EX", 60)
+redis_tx(conns, [["LPUSH", clave, "lib-001"], ["LTRIM", clave, 0, 4]])           # [1, True]
+top = pairs(redis_cmd(conns, "ZRANGE", "biblioteca:ranking:prestamos", 0, 4, "REV", "WITHSCORES"))
+prestamos = as_int(redis_cmd(conns, "ZSCORE", "biblioteca:ranking:prestamos", "lib-001"))   # 0 si no existe
+```
+
+Siguen siendo comandos literales: el kit no tiene `zincrby`, `set`, etc. (lo verifica `tests/test_no_orm.py`).
+
+### 5.3 Neo4j (`neo4j_utils.py`)
+
+| Helper | Qué hace |
+|--------|----------|
+| `cypher_write(conns, consulta, **params)` | Escritura en transacción administrada (`execute_write`). No devuelve nada. |
+| `cypher_read(conns, consulta, **params)` | Lectura en transacción administrada (`execute_read`). Devuelve `list[dict]` con los alias del `RETURN`. |
+| `cypher_read_one(conns, consulta, **params)` | Igual, pero la primera fila o `None`. |
+| `cypher_schema(conns, [sentencias])` | Constraints/índices `IF NOT EXISTS`, una sola vez por driver; se puede llamar antes de cada operación. |
+
+```python
+from app.infrastructure.neo4j_utils import cypher_read, cypher_read_one, cypher_schema, cypher_write
+
+cypher_schema(conns, ["CREATE CONSTRAINT socio_id IF NOT EXISTS FOR (s:Socio) REQUIRE s.id IS UNIQUE"])
+
+cypher_write(conns, "MERGE (s:Socio {id: $socio_id}) MERGE (l:Libro {id: $libro_id}) MERGE (s)-[:PRESTO]->(l)",
+             socio_id="soc-007", libro_id="lib-001")
+filas = cypher_read(conns, "MATCH (:Socio {id: $id})-[:PRESTO]->(l:Libro) RETURN l.id AS id, l.titulo AS titulo", id="soc-007")
+fila = cypher_read_one(conns, "MATCH (l:Libro {id: $id}) RETURN l.titulo AS titulo", id="lib-001")   # None si no existe
+```
+
+- Los valores van **siempre como parámetros** (`$id`), nunca con f-strings (ver 4.c).
+- La transacción se reintenta ante errores transitorios: la escritura tiene que ser idempotente (`MERGE`, ver 3.2).
+- Si necesitan algo que el kit no cubre (`PROFILE`, `.single()`, otra forma de consumir el resultado), usen directamente `conns.neo4j.session()` como en la sección 3.

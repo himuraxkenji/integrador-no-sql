@@ -3,6 +3,7 @@
 from app.catalog.domain import Product
 from app.catalog.ports import ProductCache
 from app.infrastructure.connections import Connections
+from app.infrastructure.redis_utils import redis_cmd  # noqa: F401  (kit de la cátedra)
 
 
 class ProductCacheAdapter(ProductCache):
@@ -19,6 +20,9 @@ class ProductCacheAdapter(ProductCache):
     solo acepta comandos literales vía `execute_command(...)` / `pipeline()`.
     Pistas de plomería:
     `product.model_dump_json()` serializa y `Product.model_validate_json(texto)` deserializa.
+    Kit de la cátedra: `redis_cmd(self._conns, "GET", clave)` envía un comando literal de Redis
+    (ver `app/infrastructure/redis_utils.py`). Con otro motor: `cypher_write` / `cypher_read`
+    (`neo4j_utils.py`) o pymongo + `mongo_utils.py`.
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para la caché,
     cómo modelaron las entradas (convención de claves/documentos) y cómo logran el vencimiento

@@ -3,6 +3,7 @@
 from app.catalog.domain import Product
 from app.customers.domain import Customer
 from app.infrastructure.connections import Connections
+from app.infrastructure.neo4j_utils import cypher_schema, cypher_write  # noqa: F401  (kit de la cátedra)
 from app.orders.domain import Order
 from app.orders.ports import PurchaseRelations
 
@@ -23,6 +24,14 @@ class PurchaseRelationsAdapter(PurchaseRelations):
     Recibe TODAS las conexiones (`connections.mongo`, `connections.redis`, `connections.neo4j`).
     Si eligen Redis: `connections.redis` solo acepta comandos literales vía
     `execute_command(...)` / `pipeline()` (no métodos de conveniencia de redis-py).
+
+    Kit de la cátedra, plomería lista para usar. La consulta la escriben ustedes. Ejemplos con otro dominio:
+      - Neo4j (`app/infrastructure/neo4j_utils.py`):
+            cypher_schema(self._conns, ["CREATE CONSTRAINT libro_id IF NOT EXISTS FOR (l:Libro) REQUIRE l.id IS UNIQUE"])
+            cypher_write(self._conns, "MERGE (l:Libro {id: $id}) SET l.titulo = $titulo", id="lib-001", titulo="Rayuela")
+        (`cypher_schema` corre una sola vez por conexión; `cypher_write` usa una transacción administrada.)
+      - Redis (`redis_utils.py`): `redis_cmd(self._conns, "SADD", clave, miembro)`, `redis_tx(self._conns, [[...], [...]])`.
+      - MongoDB: pymongo directo + `ensure_indexes` (`mongo_utils.py`).
 
     Decisión de motor: registren en docs/decisions.md qué motor eligieron para las relaciones
     de compra, cómo las modelaron y por qué descartaron las otras opciones.

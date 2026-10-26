@@ -6,14 +6,18 @@ from pymongo.database import Database
 
 from app.catalog.domain import Product, ProductFilter
 from app.catalog.ports import ProductRepository
-from app.infrastructure.mongo_utils import from_document, to_document
+from app.infrastructure.mongo_utils import ensure_indexes, from_document, from_documents, to_document  # noqa: F401
 
 
 class MongoProductRepository(ProductRepository):
     """Productos en MongoDB. Colección sugerida: `products`.
 
-    Ayudas provistas (plomería): `to_document(product)` y `from_document(Product, doc)`
-    convierten entre el modelo y el documento (`id` <-> `_id`).
+    Kit de la cátedra (`app/infrastructure/mongo_utils.py`), plomería lista para usar:
+      - `to_document(product)` / `from_document(Product, doc)`: modelo <-> documento (`id` <-> `_id`).
+      - `from_documents(Product, cursor)`: un cursor (o lista) de documentos -> `list[Product]`.
+      - `ensure_indexes(self._col, [IndexModel(...)])`: crea los índices una sola vez; se puede llamar en cada operación.
+    El filtro, el orden y el `$set` los escriben ustedes con pymongo. Ejemplo con otro dominio:
+        from_documents(Libro, libros.find({"activo": True}).sort("anio", -1))
     """
 
     def __init__(self, db: Database):

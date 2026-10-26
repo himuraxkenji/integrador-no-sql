@@ -2,7 +2,7 @@
 
 from pymongo.database import Database
 
-from app.infrastructure.mongo_utils import from_document, to_document
+from app.infrastructure.mongo_utils import ensure_indexes, from_document, from_documents, to_document  # noqa: F401
 from app.orders.domain import OrderSyncStatus, Order
 from app.orders.ports import OrderRepository
 
@@ -11,7 +11,9 @@ class MongoOrderRepository(OrderRepository):
     """Órdenes en MongoDB. Colección sugerida: `orders`.
 
     Cada orden guarda sus ítems embebidos (con el precio snapshot) y `sync_status`.
-    Plomería provista: `to_document(order)` / `from_document(Order, doc)`.
+    Kit de la cátedra (`app/infrastructure/mongo_utils.py`): `to_document(order)` / `from_document(Order, doc)`,
+    `from_documents(Order, cursor)` -> `list[Order]` y `ensure_indexes(self._col, [IndexModel(...)])`
+    (crea los índices una sola vez; se puede llamar en cada operación).
     Ojo: `OrderSyncStatus` es un Enum de `str`; guardenlo como texto (`status.value`).
     """
 

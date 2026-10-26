@@ -158,9 +158,11 @@ La cátedra entrega un repositorio base. Define con claridad qué viene resuelto
 | Demo de caché | Retardo configurable (`CACHE_MISS_DELAY_SECONDS`, 5 s en Compose) en la lectura de MongoDB cuando hay MISS, para que se vea la diferencia con el HIT. No requiere implementar nada. |
 | Interfaz de prueba | UI web en `/ui` (HTML + JS, sin build) y Swagger UI en `/docs` para probar la API y los escenarios. |
 | Clientes de base de datos | mongo-express, RedisInsight y Neo4j Browser (opcionales, perfil `clients` de Compose), más `make mongosh`, `make redis-cli` y `make cypher-shell`. |
+| Kit de plomería | Helpers para los tres motores (`app/infrastructure/mongo_utils.py`, `redis_utils.py`, `neo4j_utils.py`): sesiones/transacciones, `MULTI`/`EXEC`, mapeo modelo-documento y normalización de respuestas. Transportan la consulta; no la construyen. Ver `docs/guia-consultas.md`, sección 5. |
 <!-- REVISAR (cátedra): retardo de MISS (CACHE_MISS_DELAY_SECONDS) agregado a la lista de lo provisto, a pedido del docente -->
 <!-- REVISAR (cátedra): interfaz de prueba (/ui) y Swagger (/docs) agregados a la lista de lo provisto -->
 <!-- REVISAR (cátedra): clientes de base de datos (mongo-express, RedisInsight, consolas) agregados a la lista de lo provisto -->
+<!-- REVISAR (cátedra): kit de plomería del driver (opción A del docente) agregado a la lista de lo provisto; confirmar el alcance y la redacción -->
 
 ### 7.2 Qué implementan los equipos
 
